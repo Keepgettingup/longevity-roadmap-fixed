@@ -284,14 +284,24 @@
   }
   .stat-item { font-size: 11px; color: rgba(255,255,255,0.4); }
   .stat-item strong { color: #f1c40f; }
-  #connection-canvas {
+  #connection-svg {
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    pointer-events: auto;
+    pointer-events: none;
     z-index: 5;
+  }
+  .connection-line {
+    fill: none;
+    stroke-width: 2;
+    transition: stroke-width 0.2s, opacity 0.2s;
+    pointer-events: stroke;
+  }
+  .connection-line:hover {
+    stroke-width: 4;
+    opacity: 1 !important;
   }
 </style>
 </head>
@@ -308,7 +318,7 @@
 <div id="main">
   <div id="stats-bar"></div>
   <div class="sections-grid" id="sections-grid"></div>
-  <canvas id="connection-canvas"></canvas>
+  <svg id="connection-svg"></svg>
 </div>
 
 <script>
@@ -499,6 +509,7 @@ DBS_DATA.sections.forEach((sec, i) => {
     const arms = getArms(n);
     const pill = document.createElement('div');
     pill.className = `node-pill${arms.length ? ' has-arms' : ''}`;
+    pill.id = `pill-${n.id}`;
     pill.innerHTML = `
       <span class="node-dot" style="background:${nColor}"></span>
       <span>${n.label}</span>
@@ -548,30 +559,29 @@ function showCatBubble(e, nodeData, secData) {
   }, 10);
 }
 
-// ── CANVAS CONNECTIONS ───────────────────────────────────────────────────────
-const canvas = document.getElementById('connection-canvas');
-const ctx = canvas.getContext('2d');
-let connections = [];
-let hoveredLine = null;
-let hovered3DPoint = null;
+// ── SVG CONNECTIONS ───────────────────────────────────────────────────────
+const svg = document.getElementById('connection-svg');
+window.svgConnections = [];
 
-function resizeCanvas() {
+function resizeSvg() {
   const main = document.getElementById('main');
-  canvas.width = main.offsetWidth;
-  canvas.height = main.offsetHeight;
+  svg.setAttribute('width', main.offsetWidth);
+  svg.setAttribute('height', main.offsetHeight);
 }
 
-function buildConnections() {
-  connections = [];
+function buildSvgConnections() {
+  svg.innerHTML = '';
+  window.svgConnections = [];
   const pills = document.querySelectorAll('.node-pill');
   const pointMap = {};
+  const mainRect = document.getElementById('main').getBoundingClientRect();
+  const bottomEdge = mainRect.height - 50;
 
   pills.forEach(pill => {
     const arms = pill.querySelectorAll('.node-arm');
     if (!arms.length) return;
 
     const rect = pill.getBoundingClientRect();
-    const mainRect = document.getElementById('main').getBoundingClientRect();
     const startX = rect.right - mainRect.left;
     const startY = rect.top + rect.height / 2 - mainRect.top;
 
@@ -580,150 +590,101 @@ function buildConnections() {
       const color = arm.style.getPropertyValue('--arm-color') || '#f1c40f';
 
       if (!pointMap[targetId]) {
-        pointMap[targetId] = { x: startX + 150, y: startY, color, nodes: [] };
+        pointMap[targetId] = { x: startX, y: bottomEdge, color, nodes: [] };
       }
-      pointMap[targetId].nodes.push({ x: startX, y: startY, color });
+      pointMap[targetId].nodes.push({ x: startX, y: startY, color, pillId: pill.id });
     });
   });
 
   Object.keys(pointMap).forEach(targetId => {
     const point = pointMap[targetId];
     point.nodes.forEach(node => {
-      connections.push({
-        x1: node.x,
-        y1: node.y,
-        x2: point.x,
-        y2: point.y,
-        color: node.color,
-        targetId,
-        opacity: 0.05,
-        width: 1
-      });
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      const midX = (node.x + point.x) / 2;
+      const midY = (node.y + point.y) / 2;
+      const controlOffsetX = 80;
+      const controlOffsetY = 200;
+      const d = `M ${node.x} ${node.y} C ${node.x + controlOffsetX} ${node.y + controlOffsetY}, ${midX} ${midY - controlOffsetY}, ${point.x} ${point.y}`;
+      
+      path.setAttribute('d', d);
+      path.setAttribute('stroke', node.color);
+      path.setAttribute('class', 'connection-line');
+      path.setAttribute('data-target-id', targetId);
+      path.setAttribute('data-source-pill', node.pillId);
+      
+      svg.appendChild(path);
+      svgConnections.push({ path, targetId, sourcePillId: node.pillId });
     });
   });
-
-  window.connections = connections;
 }
 
-function drawConnections() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  connections.forEach(conn => {
-    ctx.beginPath();
-    ctx.moveTo(conn.x1, conn.y1);
-    ctx.lineTo(conn.x2, conn.y2);
-    ctx.strokeStyle = conn.color;
-    ctx.globalAlpha = conn.opacity;
-    ctx.lineWidth = conn.width;
-    ctx.stroke();
-  });
-
-  ctx.globalAlpha = 1;
-}
-
-function distanceToLine(x, y, x1, y1, x2, y2) {
-  const A = x - x1;
-  const B = y - y1;
-  const C = x2 - x1;
-  const D = y2 - y1;
-  const dot = A * C + B * D;
-  const lenSq = C * C + D * D;
-  let param = -1;
-  if (lenSq !== 0) param = dot / lenSq;
-  let xx, yy;
-  if (param < 0) { xx = x1; yy = y1; }
-  else if (param > 1) { xx = x2; yy = y2; }
-  else { xx = x1 + param * C; yy = y1 + param * D; }
-  const dx = x - xx;
-  const dy = y - yy;
-  return Math.sqrt(dx * dx + dy * dy);
-}
-
-canvas.addEventListener('mousemove', (e) => {
-  const rect = canvas.getBoundingClientRect();
-  const x = e.clientX - rect.left;
-  const y = e.clientY - rect.top;
-
-  let found = null;
-  for (const conn of connections) {
-    const dist = distanceToLine(x, y, conn.x1, conn.y1, conn.x2, conn.y2);
-    if (dist < 10) {
-      found = conn;
-      break;
-    }
-  }
-
-  if (found !== hoveredLine) {
-    hoveredLine = found;
-    connections.forEach(conn => {
-      if (conn === hoveredLine) {
-        conn.opacity = 1;
-        conn.width = 3;
-      } else {
-        conn.opacity = 0.05;
-        conn.width = 1;
+function calculateDynamicOpacity(path, sourcePillId) {
+  const boxes = document.querySelectorAll('.branch-card');
+  const sourcePill = document.getElementById(sourcePillId);
+  if (!sourcePill) return 1;
+  
+  let opacity = 1;
+  
+  boxes.forEach(box => {
+    if (box === sourcePill.closest('.branch-card')) return;
+    
+    const boxRect = box.getBoundingClientRect();
+    const mainRect = document.getElementById('main').getBoundingClientRect();
+    const boxX = boxRect.left - mainRect.left;
+    const boxY = boxRect.top - mainRect.top;
+    const boxW = boxRect.width;
+    const boxH = boxRect.height;
+    
+    const pathLength = path.getTotalLength();
+    for (let i = 0; i < pathLength; i += 10) {
+      const point = path.getPointAtLength(i);
+      if (point.x >= boxX && point.x <= boxX + boxW && point.y >= boxY && point.y <= boxY + boxH) {
+        opacity = Math.min(opacity, 0.2);
+        break;
       }
-    });
-    drawConnections();
-  }
-});
-
-canvas.addEventListener('mouseleave', () => {
-  hoveredLine = null;
-  hovered3DPoint = null;
-  connections.forEach(conn => {
-    conn.opacity = 0.05;
-    conn.width = 1;
-  });
-  drawConnections();
-});
-
-function highlight3DPoint(targetId) {
-  hovered3DPoint = targetId;
-  connections.forEach(conn => {
-    if (conn.targetId === targetId) {
-      conn.opacity = 1;
-      conn.width = 3;
-    } else {
-      conn.opacity = 0.05;
-      conn.width = 1;
     }
   });
-  drawConnections();
+  
+  return opacity;
 }
 
-document.querySelectorAll('.node-arm').forEach(arm => {
-  arm.addEventListener('mouseenter', () => {
-    const targetId = arm.getAttribute('data-target-id');
-    highlight3DPoint(targetId);
+function updateDynamicOpacity(highlightTargetId = null) {
+  svgConnections.forEach(conn => {
+    let opacity = calculateDynamicOpacity(conn.path, conn.sourcePillId);
+    if (highlightTargetId && conn.targetId === highlightTargetId) {
+      opacity = 1;
+    }
+    conn.path.setAttribute('opacity', opacity);
   });
-  arm.addEventListener('mouseleave', () => {
-    hovered3DPoint = null;
-    connections.forEach(conn => {
-      conn.opacity = 0.05;
-      conn.width = 1;
-    });
-    drawConnections();
-  });
-});
+}
 
-function initCanvas() {
-  resizeCanvas();
+function initSvg() {
+  resizeSvg();
   setTimeout(() => {
-    buildConnections();
-    drawConnections();
+    buildSvgConnections();
+    updateDynamicOpacity();
   }, 100);
 }
 
 window.addEventListener('resize', () => {
-  resizeCanvas();
+  resizeSvg();
   setTimeout(() => {
-    buildConnections();
-    drawConnections();
+    buildSvgConnections();
+    updateDynamicOpacity();
   }, 100);
 });
 
-setTimeout(initCanvas, 1000);
+document.querySelectorAll('.node-arm').forEach(arm => {
+  arm.addEventListener('mouseenter', () => {
+    const targetId = arm.getAttribute('data-target-id');
+    updateDynamicOpacity(targetId);
+  });
+  arm.addEventListener('mouseleave', () => {
+    updateDynamicOpacity();
+  });
+});
+
+setTimeout(initSvg, 1000);
 </script>
 </body>
 </html>
