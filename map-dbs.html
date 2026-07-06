@@ -412,6 +412,16 @@ const DBS_DATA = {
       { id:"dbs_narishige",label:"Narishige", type:"resource" },
       { id:"dbs_neuralynx",label:"Neuralynx", type:"resource" },
     ]},
+    { id:"dbs_us_nav", label:"Ultrasound Navigation Theory", type:"theory", nodes:[
+      { id:"dbs_us_memory_rod", label:"Memory-Metal Glass Rod", type:"device", arms3d:["na_flexprobe","mc_fab"] },
+      { id:"dbs_us_magnetic_ink", label:"Magnetic Ink Patches (color-coded)", type:"resource", arms3d:["mc_fab"] },
+      { id:"dbs_us_trigger", label:"Ultrasound Triggering of Patches", type:"mechanism", arms3d:["ce_fus","na_rec"] },
+      { id:"dbs_us_memory_movement", label:"Memory-Metal Directional Change", type:"mechanism", arms3d:["na_rec","ce_neu"] },
+      { id:"dbs_us_bend_left", label:"Left Bend Activation", type:"method", arms3d:["ce_fus"] },
+      { id:"dbs_us_bend_right", label:"Right Bend Activation", type:"method", arms3d:["ce_fus"] },
+      { id:"dbs_us_curve", label:"Vascular Curve Navigation", type:"method", arms3d:["ce_fus","mc_optics"] },
+      { id:"dbs_us_tissue_safe", label:"Tissue-Safe Non-Invasive Steering", type:"theory", arms3d:["ce_fus","bp_regen"] },
+    ]},
     { id:"dbs_gaps", label:"Open Questions", type:"gap", nodes:[
       { id:"gap_dbs_flex",     label:"❓ Flexible Cannula Stiffness", type:"gap" },
       { id:"gap_dbs_calib",    label:"❓ Ultrasound Focal Calibration", type:"gap" },
