@@ -197,7 +197,7 @@
     top: 4px;
     width: 36px;
     height: 2px;
-    background: linear-gradient(90deg, rgba(241,196,15,0.65), rgba(241,196,15,0.16));
+    background: linear-gradient(90deg, var(--arm-color, rgba(241,196,15,0.65)), var(--arm-color-fade, rgba(241,196,15,0.16)));
     border-radius: 99px;
   }
   .node-arm::after {
@@ -208,15 +208,15 @@
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    background: #f1c40f;
-    box-shadow: 0 0 12px rgba(241,196,15,0.55);
+    background: var(--arm-color, #f1c40f);
+    box-shadow: 0 0 12px var(--arm-color-glow, rgba(241,196,15,0.55));
   }
   .node-arm:hover::before {
-    background: linear-gradient(90deg, rgba(241,196,15,0.95), rgba(241,196,15,0.42));
+    background: linear-gradient(90deg, var(--arm-color, rgba(241,196,15,0.95)), var(--arm-color-fade, rgba(241,196,15,0.42)));
   }
   .node-arm:hover::after {
     transform: scale(1.25);
-    box-shadow: 0 0 18px rgba(241,196,15,0.85);
+    box-shadow: 0 0 18px var(--arm-color-glow, rgba(241,196,15,0.85));
   }
   .arm-tooltip {
     position: absolute;
@@ -339,6 +339,14 @@ const CROSS_3D_LABELS = {
   bp_cryo_neuro:'Neural Tissue Cryopreservation', mc_optics:'Bio-Optics & Imaging', mc_fab:'Microfabrication',
   mc_photonic:'Photonic Chips (neural)', mc_lightsheet:'Light-Sheet Microscopy'
 };
+const CROSS_3D_COLORS = {
+  na_bci:'#3498db', na_closedloop:'#9b59b6', na_rec:'#e67e22',
+  na_flexprobe:'#27ae60', na_mxene:'#1abc9c', na_spike:'#f39c12',
+  na_darpa:'#e74c3c', na_optogenetics:'#8e44ad', ce_neu:'#d35400',
+  ce_fus:'#16a085', ce_cortical:'#2c3e50', bp_regen:'#27ae60',
+  bp_cryo_neuro:'#34495e', mc_optics:'#2980b9', mc_fab:'#7f8c8d',
+  mc_photonic:'#c0392b', mc_lightsheet:'#6c5ce7'
+};
 
 const DBS_DATA = {
   sections: [
@@ -414,7 +422,8 @@ const DBS_DATA = {
     ]},
     { id:"dbs_us_nav", label:"Ultrasound Navigation Theory", type:"theory", nodes:[
       { id:"dbs_us_memory_rod", label:"Memory-Metal Glass Rod", type:"device", arms3d:["na_flexprobe","mc_fab"] },
-      { id:"dbs_us_magnetic_ink", label:"Magnetic Ink Patches (color-coded)", type:"resource", arms3d:["mc_fab"] },
+      { id:"dbs_us_nitinol", label:"Nitinol (Ni-Ti Shape Memory Alloy)", type:"resource", arms3d:["mc_fab","na_mxene"] },
+      { id:"dbs_us_magnetic_ink", label:"Magnetic Ink Patches (Nitinol+Fe3O4)", type:"resource", arms3d:["mc_fab"] },
       { id:"dbs_us_trigger", label:"Ultrasound Triggering of Patches", type:"mechanism", arms3d:["ce_fus","na_rec"] },
       { id:"dbs_us_memory_movement", label:"Memory-Metal Directional Change", type:"mechanism", arms3d:["na_rec","ce_neu"] },
       { id:"dbs_us_bend_left", label:"Left Bend Activation", type:"method", arms3d:["ce_fus"] },
@@ -440,7 +449,7 @@ function escapeHtml(value) {
 }
 function getArms(node) {
   const ids = node.arms3d || (node.arm3d ? [node.arm3d] : []);
-  return ids.map(id => ({ id, label: CROSS_3D_LABELS[id] || id }));
+  return ids.map(id => ({ id, label: CROSS_3D_LABELS[id] || id, color: CROSS_3D_COLORS[id] || '#f1c40f' }));
 }
 
 let totalNodes = 0;
@@ -485,7 +494,7 @@ DBS_DATA.sections.forEach((sec, i) => {
       <span>${n.label}</span>
       ${badge ? `<span class="node-badge" style="background:${BADGE_COLORS[badge]}22;color:${BADGE_COLORS[badge]};border:1px solid ${BADGE_COLORS[badge]}44">${badge}</span>` : ''}
       <span style="font-size:11px;color:rgba(241,196,15,0.5);margin-left:2px;">+</span>
-      ${arms.length ? `<span class="node-arms">${arms.map(arm => `<span class="node-arm" data-target-id="${escapeHtml(arm.id)}"><span class="arm-tooltip">${escapeHtml(arm.label)}</span></span>`).join('')}</span>` : ''}
+      ${arms.length ? `<span class="node-arms">${arms.map(arm => `<span class="node-arm" data-target-id="${escapeHtml(arm.id)}" style="--arm-color:${arm.color};--arm-color-fade:${arm.color}26;--arm-color-glow:${arm.color}8c"><span class="arm-tooltip">${escapeHtml(arm.label)}</span></span>`).join('')}</span>` : ''}
     `;
     pill.onclick = (e) => showCatBubble(e, n, sec);
     wrap.appendChild(pill);
