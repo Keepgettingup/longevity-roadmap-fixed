@@ -174,25 +174,31 @@
   }
   .node-arms {
     position: absolute;
-    left: calc(100% + 2px);
+    left: calc(100% - 2px);
     top: 50%;
     transform: translateY(-50%);
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 5px;
+    padding-left: 20px;
     pointer-events: none;
     z-index: 20;
   }
   .node-arm {
     position: relative;
-    width: 14px;
+    width: 34px;
     height: 10px;
     pointer-events: auto;
-    cursor: pointer;
   }
   .node-arm::before {
     content: '';
-    display: none;
+    position: absolute;
+    left: -20px;
+    top: 4px;
+    width: 36px;
+    height: 2px;
+    background: linear-gradient(90deg, var(--arm-color, rgba(241,196,15,0.65)), var(--arm-color-fade, rgba(241,196,15,0.16)));
+    border-radius: 99px;
   }
   .node-arm::after {
     content: '';
@@ -203,14 +209,14 @@
     height: 8px;
     border-radius: 50%;
     background: var(--arm-color, #f1c40f);
-    box-shadow: 0 0 8px var(--arm-color-glow, rgba(241,196,15,0.4));
-    opacity: 0;
-    transition: opacity 0.2s, transform 0.2s;
+    box-shadow: 0 0 12px var(--arm-color-glow, rgba(241,196,15,0.55));
+  }
+  .node-arm:hover::before {
+    background: linear-gradient(90deg, var(--arm-color, rgba(241,196,15,0.95)), var(--arm-color-fade, rgba(241,196,15,0.42)));
   }
   .node-arm:hover::after {
-    opacity: 1;
-    transform: scale(1.4);
-    box-shadow: 0 0 16px var(--arm-color-glow, rgba(241,196,15,0.9));
+    transform: scale(1.25);
+    box-shadow: 0 0 18px var(--arm-color-glow, rgba(241,196,15,0.85));
   }
   .arm-tooltip {
     position: absolute;
@@ -278,26 +284,6 @@
   }
   .stat-item { font-size: 11px; color: rgba(255,255,255,0.4); }
   .stat-item strong { color: #f1c40f; }
-  #connection-svg {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
-    z-index: 5;
-  }
-  .connection-line {
-    fill: none;
-    stroke-width: 2;
-    transition: stroke-width 0.2s, opacity 0.2s;
-    pointer-events: stroke;
-    cursor: pointer;
-  }
-  .connection-line:hover {
-    stroke-width: 4;
-    opacity: 1 !important;
-  }
 </style>
 </head>
 <body>
@@ -313,7 +299,6 @@
 <div id="main">
   <div id="stats-bar"></div>
   <div class="sections-grid" id="sections-grid"></div>
-  <svg id="connection-svg"></svg>
 </div>
 
 <script>
@@ -504,7 +489,6 @@ DBS_DATA.sections.forEach((sec, i) => {
     const arms = getArms(n);
     const pill = document.createElement('div');
     pill.className = `node-pill${arms.length ? ' has-arms' : ''}`;
-    pill.id = `pill-${n.id}`;
     pill.innerHTML = `
       <span class="node-dot" style="background:${nColor}"></span>
       <span>${n.label}</span>
@@ -553,182 +537,6 @@ function showCatBubble(e, nodeData, secData) {
     });
   }, 10);
 }
-
-// ── SVG CONNECTIONS ───────────────────────────────────────────────────────
-const svg = document.getElementById('connection-svg');
-window.svgConnections = [];
-
-function resizeSvg() {
-  const main = document.getElementById('main');
-  svg.setAttribute('width', main.offsetWidth);
-  svg.setAttribute('height', main.offsetHeight);
-}
-
-function buildSvgConnections() {
-  svg.innerHTML = '';
-  window.svgConnections = [];
-  const pills = document.querySelectorAll('.node-pill');
-  const pointMap = {};
-  const mainRect = document.getElementById('main').getBoundingClientRect();
-
-  pills.forEach(pill => {
-    const arms = pill.querySelectorAll('.node-arm');
-    if (!arms.length) return;
-
-    const rect = pill.getBoundingClientRect();
-    const startX = rect.right - mainRect.left;
-    const startY = rect.top + rect.height / 2 - mainRect.top;
-
-    arms.forEach(arm => {
-      const targetId = arm.getAttribute('data-target-id');
-      const color = arm.style.getPropertyValue('--arm-color') || '#f1c40f';
-
-      if (!pointMap[targetId]) {
-        pointMap[targetId] = { color, nodes: [] };
-      }
-      pointMap[targetId].nodes.push({ x: startX, y: startY, color, pillId: pill.id });
-    });
-  });
-
-  // For each 3D target, create ONE shared convergence point
-  Object.keys(pointMap).forEach(targetId => {
-    const point = pointMap[targetId];
-    // Position the shared dot to the right of the first pill that references it
-    const firstNode = point.nodes[0];
-    const sharedX = firstNode.x + 40;
-    const sharedY = firstNode.y;
-
-    // Render visible dot at convergence point
-    const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-    dot.setAttribute('cx', sharedX);
-    dot.setAttribute('cy', sharedY);
-    dot.setAttribute('r', 5);
-    dot.setAttribute('fill', point.color);
-    dot.setAttribute('class', 'connection-dot');
-    dot.setAttribute('data-target-id', targetId);
-    dot.style.filter = `drop-shadow(0 0 6px ${point.color}80)`;
-    dot.style.cursor = 'pointer';
-    dot.style.pointerEvents = 'auto';
-    svg.appendChild(dot);
-
-    // Draw curves from each pill to the shared dot
-    point.nodes.forEach(node => {
-      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-      const dx = sharedX - node.x;
-      const cp1x = node.x + dx * 0.4;
-      const cp1y = node.y;
-      const cp2x = sharedX - dx * 0.2;
-      const cp2y = sharedY;
-      const d = `M ${node.x} ${node.y} C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${sharedX} ${sharedY}`;
-      
-      path.setAttribute('d', d);
-      path.setAttribute('stroke', node.color);
-      path.setAttribute('class', 'connection-line');
-      path.setAttribute('data-target-id', targetId);
-      path.setAttribute('data-source-pill', node.pillId);
-      
-      svg.appendChild(path);
-      window.svgConnections.push({ path, targetId, sourcePillId: node.pillId, dot });
-    });
-  });
-}
-
-function calculateDynamicOpacity(path, sourcePillId) {
-  const boxes = document.querySelectorAll('.branch-card');
-  const sourcePill = document.getElementById(sourcePillId);
-  if (!sourcePill) return 0.05;
-  
-  let opacity = 0.05;
-  
-  boxes.forEach(box => {
-    if (box === sourcePill.closest('.branch-card')) return;
-    
-    const boxRect = box.getBoundingClientRect();
-    const mainRect = document.getElementById('main').getBoundingClientRect();
-    const boxX = boxRect.left - mainRect.left;
-    const boxY = boxRect.top - mainRect.top;
-    const boxW = boxRect.width;
-    const boxH = boxRect.height;
-    
-    const pathLength = path.getTotalLength();
-    for (let i = 0; i < pathLength; i += 10) {
-      const point = path.getPointAtLength(i);
-      if (point.x >= boxX && point.x <= boxX + boxW && point.y >= boxY && point.y <= boxY + boxH) {
-        opacity = Math.min(opacity, 0.02);
-        break;
-      }
-    }
-  });
-  
-  return opacity;
-}
-
-function updateDynamicOpacity(highlightTargetId = null) {
-  window.svgConnections.forEach(conn => {
-    let opacity = calculateDynamicOpacity(conn.path, conn.sourcePillId);
-    if (highlightTargetId && conn.targetId === highlightTargetId) {
-      opacity = 1;
-      conn.path.setAttribute('stroke-width', 3);
-    } else if (highlightTargetId) {
-      conn.path.setAttribute('stroke-width', 2);
-    } else {
-      conn.path.setAttribute('stroke-width', 2);
-    }
-    conn.path.setAttribute('opacity', opacity);
-  });
-  
-  // Highlight shared dots
-  const dots = svg.querySelectorAll('.connection-dot');
-  dots.forEach(dot => {
-    const dotTargetId = dot.getAttribute('data-target-id');
-    if (highlightTargetId && dotTargetId === highlightTargetId) {
-      dot.setAttribute('r', 7);
-    } else {
-      dot.setAttribute('r', 5);
-    }
-  });
-}
-
-function initSvg() {
-  resizeSvg();
-  setTimeout(() => {
-    buildSvgConnections();
-    updateDynamicOpacity();
-  }, 100);
-}
-
-window.addEventListener('resize', () => {
-  resizeSvg();
-  setTimeout(() => {
-    buildSvgConnections();
-    updateDynamicOpacity();
-  }, 100);
-});
-
-document.querySelectorAll('.node-arm').forEach(arm => {
-  arm.addEventListener('mouseenter', () => {
-    const targetId = arm.getAttribute('data-target-id');
-    updateDynamicOpacity(targetId);
-  });
-  arm.addEventListener('mouseleave', () => {
-    updateDynamicOpacity();
-  });
-});
-
-svg.addEventListener('mouseover', (e) => {
-  if (e.target.classList && e.target.classList.contains('connection-dot')) {
-    const targetId = e.target.getAttribute('data-target-id');
-    updateDynamicOpacity(targetId);
-  }
-});
-
-svg.addEventListener('mouseout', (e) => {
-  if (e.target.classList && e.target.classList.contains('connection-dot')) {
-    updateDynamicOpacity();
-  }
-});
-
-setTimeout(initSvg, 1000);
 </script>
 </body>
 </html>
