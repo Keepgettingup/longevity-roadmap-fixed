@@ -731,6 +731,33 @@
   opacity: 1;
 }
 
+/* BLOOD DROPLET OVERLAYS - for Blood mode */
+.blood-drop-overlay {
+  position: absolute;
+  pointer-events: none;
+  z-index: 31;
+  display: none;
+  transform: translate(-50%, -50%);
+  font-size: 18px;
+  animation: bloodDripPulse 1.1s ease-in-out infinite;
+  filter: drop-shadow(0 0 8px rgba(231,40,40,0.9));
+}
+.blood-drop-overlay.visible { display: block; }
+.blood-drop-overlay.blood-drop-target {
+  animation: bloodDripPulseTarget 1.1s ease-in-out infinite;
+  filter: drop-shadow(0 0 8px rgba(255,80,80,0.7));
+  font-size: 16px;
+  opacity: 0.75;
+}
+@keyframes bloodDripPulse {
+  0%,100% { transform: translate(-50%,-50%) scale(1); }
+  50% { transform: translate(-50%,-60%) scale(1.2); }
+}
+@keyframes bloodDripPulseTarget {
+  0%,100% { transform: translate(-50%,-50%) scale(0.9); opacity: 0.6; }
+  50% { transform: translate(-50%,-58%) scale(1.1); opacity: 1; }
+}
+
   .conn-label .c-name {
     font-size: 10px;
     font-weight: 600;
@@ -1613,6 +1640,10 @@
     <div class="node-eye" id="node-eye">👁</div>
   </div>
 
+  <!-- BLOOD DROPLET OVERLAYS (for Blood mode - source and target nodes) -->
+  <div id="blood-drop-source" class="blood-drop-overlay"></div>
+  <div id="blood-drop-target" class="blood-drop-overlay blood-drop-target"></div>
+
   <!-- WIKI PANEL -->
   <div id="wiki-overlay">
     <div id="wiki-backdrop"></div>
@@ -1680,8 +1711,8 @@ if (!isWebGLSupported) {
 }
 
 // ── SUPABASE AUTH + DB ───────────────────────────────────────────────────────
-const SUPABASE_URL = 'https://izsfximpstxuypvyhimw.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml6c2Z4aW1wc3R4dXlwdnloaW13Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5MjgyMjgsImV4cCI6MjA5NjUwNDIyOH0.iYtKmvCFqGvc2L8wgVUdKekClXpom18FdRRfCBs70e0';
+const SUPABASE_URL = 'https://fltnctwslizjueytwqir.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZsdG5jdHdzbGl6anVleXR3cWlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxMzA0NDksImV4cCI6MjA5NDcwNjQ0OX0.kgxowNqCa1KgDRVybJoWdfy_UK9uP2YQcynonqpDsPU';
 let sbClient = null;
 try {
   if (window.supabase && window.supabase.createClient) {
@@ -2553,6 +2584,12 @@ function setSelected(node) {
   Graph.nodeColor(nodeColor).linkColor(linkColor).linkWidth(linkWidth);
   updateVotePanel();
   updateBloodlineBtn();
+  // Re-render bloodline sidebar to reflect new selectedNode context
+  if (typeof renderBloodlineSidebar === 'function') renderBloodlineSidebar();
+  // Lazy-load community bloodlines when a node is selected (if not in blood mode)
+  if (typeof syncAllBloodlinesFromDB === 'function' && activeMode !== 'blood' && node && typeof allBloodlines !== 'undefined' && allBloodlines.length === 0) {
+    syncAllBloodlinesFromDB();
+  }
 
   // Show plus button for adding community entries on any non-core node
   let plusBtn = document.getElementById('community-plus-btn');
@@ -2569,6 +2606,10 @@ function setSelected(node) {
 }
 
 function nodeColor(n) {
+  // Blood mode: source node pulses red
+  if (activeMode === 'blood' && bloodlinePicking && bloodlineSource && n.id === bloodlineSource.id) {
+    return '#e74c3c';
+  }
   const ripened = voteColor(n.baseColor, n.id);
   if (selectedNode) {
     if (connectedIds.has(n.id)) return ripened;
@@ -2652,6 +2693,18 @@ try {
   .linkDirectionalParticles(l => l.curve > 0 ? 3 : 2)
   .linkDirectionalParticleWidth(l => l.curve > 0 ? 1.8 : 1.0)
   .linkDirectionalParticleColor(l => l.curve > 0 ? 'rgba(255,200,80,0.9)' : 'rgba(180,130,255,0.7)')
+  .onNodeRightClick(node => {
+    // Bloodline picking: right-click to draw connection
+    if (activeMode === 'blood' && bloodlinePicking) {
+      finishBloodlinePick(node);
+      return;
+    }
+    // Start bloodline pick if in blood mode and node selected
+    if (activeMode === 'blood' && selectedNode && selectedNode.id === node.id) {
+      startBloodlinePick();
+      return;
+    }
+  })
   .onNodeHover(node => {
     if (node) {
       tooltip.style.display = 'block';
@@ -2663,18 +2716,36 @@ try {
         MAP2D_REGISTRY[node.id] ? '🗺 2D-Map — click twice to open' :
         CORE_IDS.has(node.id) ? '● Core Node' :
         grp ? grpLabels[grp] :
+        activeMode === 'blood' && selectedNode && selectedNode.id === node.id ? '🩸 Right-click to start bloodline' :
+        activeMode === 'blood' && bloodlinePicking ? '🩸 Right-click target to connect' :
         isUnknown(node.id) ? '⚑ Marked — to research' : '✓ Known';
+
+      // Show target droplet on hovered node during blood picking
+      if (activeMode === 'blood' && bloodlinePicking && bloodlineSource && node.id !== bloodlineSource.id) {
+        const camera = Graph.camera ? Graph.camera() : Graph._camera;
+        if (camera && bloodDropTarget) {
+          const rect = graphWrap.getBoundingClientRect();
+          const vec = new THREE.Vector3(node.x, node.y, node.z);
+          vec.project(camera);
+          const x = (vec.x * 0.5 + 0.5) * rect.width;
+          const y = (-vec.y * 0.5 + 0.5) * rect.height;
+          bloodDropTarget.style.left = x + 'px';
+          bloodDropTarget.style.top = y + 'px';
+          bloodDropTarget.textContent = '💧';
+          bloodDropTarget.classList.add('visible');
+        }
+      } else if (bloodDropTarget) {
+        bloodDropTarget.classList.remove('visible');
+      }
     } else {
       tooltip.style.display = 'none';
+      if (bloodDropTarget) bloodDropTarget.classList.remove('visible');
     }
     document.body.style.cursor = node ? 'pointer' : 'default';
+    // Refresh node color live in blood mode
+    if (activeMode === 'blood') Graph.nodeColor(nodeColor);
   })
   .onNodeClick(node => {
-    // Bloodline picking: if active, finish the bloodline
-    if (bloodlinePicking) {
-      finishBloodlinePick(node);
-      return;
-    }
     if (selectedNode && selectedNode.id === node.id) {
       // second click: 2D-map for cross-zone nodes, wiki for others
       if (MAP2D_REGISTRY && MAP2D_REGISTRY[node.id]) {
@@ -2859,6 +2930,31 @@ function open2dMap(nodeId) {
   });
   
   map2dBody.appendChild(treeEl);
+
+  // ── Bloodline Droplets section ──
+  const allBls = [...userBloodlines, ...allBloodlines];
+  const nodeBloodlines = allBls.filter(bl => bl.source === nodeId || bl.target === nodeId);
+  if (nodeBloodlines.length > 0) {
+    const blSection = document.createElement('div');
+    blSection.style.cssText = 'margin-top:16px;padding-top:14px;border-top:1px solid rgba(231,76,60,0.2);';
+    blSection.innerHTML = `<div style="font-size:9px;color:rgba(231,76,60,0.6);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">🩸 Bloodline Droplets</div>`;
+    nodeBloodlines.forEach(bl => {
+      const isOwn = !bl._foreign;
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;flex-direction:column;gap:4px;padding:7px 10px;background:rgba(231,76,60,0.06);border-radius:7px;margin-bottom:5px;border:1px solid rgba(231,76,60,0.12);';
+      row.innerHTML = `
+        <div style="display:flex;align-items:center;gap:5px;font-size:10px;">
+          <span style="color:rgba(255,255,255,0.6);cursor:pointer;" onclick="close2dMap();focusNode('${bl.source}')">${bl.sourceLabel}</span>
+          <span style="color:#e74c3c;font-size:9px;">→</span>
+          <span style="color:rgba(255,255,255,0.6);cursor:pointer;" onclick="close2dMap();focusNode('${bl.target}')">${bl.targetLabel}</span>
+          ${isOwn ? '<span style="margin-left:auto;font-size:8px;color:rgba(231,76,60,0.5);">yours</span>' : '<span style="margin-left:auto;font-size:8px;color:rgba(255,255,255,0.25);">community</span>'}
+        </div>
+        ${bl.droplet ? `<div style="font-size:10px;color:rgba(255,255,255,0.5);line-height:1.4;padding-left:2px;">${bl.droplet}</div>` : ''}
+      `;
+      blSection.appendChild(row);
+    });
+    map2dBody.appendChild(blSection);
+  }
 
   map2dOverlay.classList.add('open');
   document.body.classList.add('map2d-open');
@@ -3294,6 +3390,11 @@ function submitCommunityEntry() {
   pushEntryToDB(entry);
 
   closeCommunityModal();
+  
+  // Rebuild sidebar to show new entry
+  buildTree();
+  updateStats();
+  
   alert('Entry saved!');
 }
 
@@ -3317,8 +3418,12 @@ function updateGraph() {
   Graph.nodeColor(nodeColor).linkColor(linkColor).linkWidth(linkWidth);
 }
 
+// ── MODE STATE (declared early to avoid TDZ in nodeColor/renderBloodlineSidebar) ──
+let activeMode = null;
+
 // ── BLOODLINE SYSTEM ─────────────────────────────────────────────────────────
 let userBloodlines = [];
+let allBloodlines = [];
 let bloodlinePicking = false;
 let bloodlineSource = null;
 
@@ -3351,21 +3456,155 @@ function finishBloodlinePick(targetNode) {
     b.source === bloodlineSource.id && b.target === targetNode.id
   );
   if (!exists) {
-    const bl = {
-      id: Date.now(),
-      source: bloodlineSource.id,
-      target: targetNode.id,
-      sourceLabel: bloodlineSource.label.replace(/[^\w\s()\-\/&]/g, '').trim(),
-      targetLabel: targetNode.label.replace(/[^\w\s()\-\/&]/g, '').trim(),
-      created: new Date().toISOString()
-    };
-    userBloodlines.push(bl);
-    saveBloodlines();
-    pushBloodlineToDB(bl);
-    renderBloodlineSidebar();
-    applyBloodlineLinks();
+    // Open Droplet dialog — dirA/dirB may be reversed by user
+    openDropletDialog(bloodlineSource, targetNode, (dropletText, dirA, dirB) => {
+      const bl = {
+        id: Date.now(),
+        source: dirA.id,
+        target: dirB.id,
+        sourceLabel: dirA.label.replace(/[^\w\s()\-\/&]/g, '').trim(),
+        targetLabel: dirB.label.replace(/[^\w\s()\-\/&]/g, '').trim(),
+        droplet: dropletText || '',
+        created: new Date().toISOString()
+      };
+      userBloodlines.push(bl);
+      saveBloodlines();
+      pushBloodlineToDB(bl);
+      renderBloodlineSidebar();
+      applyBloodlineLinks();
+      cancelBloodlinePick();
+    });
+  } else {
+    cancelBloodlinePick();
   }
-  cancelBloodlinePick();
+}
+
+// Droplet modal dialog for bloodline justification
+function openDropletDialog(sourceNode, targetNode, callback) {
+  document.querySelectorAll('.droplet-modal').forEach(m => m.remove());
+
+  // Track direction (can be reversed by user)
+  let dirA = sourceNode;
+  let dirB = targetNode;
+
+  // Add styles once
+  if (!document.getElementById('droplet-styles')) {
+    const style = document.createElement('style');
+    style.id = 'droplet-styles';
+    style.textContent = `
+      @keyframes dropletIn {
+        from { opacity: 0; transform: translate(-50%, -45%); }
+        to { opacity: 1; transform: translate(-50%, -50%); }
+      }
+      @keyframes bloodPulse {
+        0%,100% { opacity: 0.7; }
+        50% { opacity: 1; }
+      }
+      .droplet-modal { animation: dropletIn 0.3s ease; }
+      .reverse-btn {
+        background: rgba(231,76,60,0.15);
+        border: 1px solid rgba(231,76,60,0.4);
+        border-radius: 50%;
+        width: 32px; height: 32px;
+        font-size: 16px;
+        cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+        transition: all 0.2s;
+        flex-shrink: 0;
+        color: #e74c3c;
+      }
+      .reverse-btn:hover { background: rgba(231,76,60,0.35); transform: scale(1.1); }
+    `;
+    document.head.appendChild(style);
+  }
+
+  const modal = document.createElement('div');
+  modal.className = 'droplet-modal';
+  modal.style.cssText = `
+    position: fixed; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(15, 12, 30, 0.98);
+    border: 2px solid rgba(231, 76, 60, 0.6);
+    border-radius: 16px; padding: 24px;
+    z-index: 10002; min-width: 420px; max-width: 520px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+    backdrop-filter: blur(12px);
+  `;
+  document.body.appendChild(modal);
+
+  function renderModal() {
+    const cleanA = dirA.label.replace(/[^\w\s()\-\/&]/g, '').trim();
+    const cleanB = dirB.label.replace(/[^\w\s()\-\/&]/g, '').trim();
+    const currentText = modal.querySelector('#droplet-input')?.value || '';
+
+    modal.innerHTML = `
+      <div style="text-align:center;margin-bottom:16px;">
+        <div style="font-size:22px;margin-bottom:6px;">🩸</div>
+        <div style="font-size:13px;color:#e74c3c;font-weight:600;letter-spacing:1px;">BLOODLINE DROPLET</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;padding:10px 12px;background:rgba(231,76,60,0.07);border-radius:10px;border:1px solid rgba(231,76,60,0.2);">
+        <span id="label-a" style="font-size:11px;color:#fff;font-weight:600;flex:1;text-align:right;line-height:1.3;">${cleanA}</span>
+        <button class="reverse-btn" id="reverse-btn" title="Switch direction (Uno Reverse)">⇄</button>
+        <span id="label-b" style="font-size:11px;color:#fff;font-weight:600;flex:1;text-align:left;line-height:1.3;">${cleanB}</span>
+      </div>
+      <div style="margin-bottom:14px;">
+        <label style="display:block;font-size:10px;color:rgba(255,255,255,0.5);margin-bottom:7px;text-transform:uppercase;letter-spacing:1px;">
+          Your reason
+        </label>
+        <textarea id="droplet-input" style="
+          width:100%;min-height:90px;background:rgba(0,0,0,0.4);
+          border:1px solid rgba(231,76,60,0.3);border-radius:8px;
+          padding:11px;color:#fff;font-size:12px;line-height:1.5;
+          resize:vertical;box-sizing:border-box;font-family:inherit;
+        " placeholder="I prefer ${cleanA} over ${cleanB} because...">${currentText}</textarea>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;">
+        <button id="droplet-cancel" style="padding:9px 18px;background:transparent;border:1px solid rgba(255,255,255,0.2);border-radius:8px;color:rgba(255,255,255,0.5);font-size:11px;cursor:pointer;">Cancel</button>
+        <button id="droplet-skip" style="padding:9px 18px;background:transparent;border:1px solid rgba(231,76,60,0.3);border-radius:8px;color:rgba(231,76,60,0.7);font-size:11px;cursor:pointer;">Skip reason</button>
+        <button id="droplet-save" style="padding:9px 22px;background:linear-gradient(135deg,#e74c3c,#c0392b);border:none;border-radius:8px;color:#fff;font-size:11px;font-weight:600;cursor:pointer;">Save Bloodline</button>
+      </div>
+    `;
+
+    // Restore cursor position in textarea
+    const ta = modal.querySelector('#droplet-input');
+    ta.setSelectionRange(currentText.length, currentText.length);
+
+    // Reverse button
+    modal.querySelector('#reverse-btn').onclick = () => {
+      [dirA, dirB] = [dirB, dirA];
+      renderModal();
+      setTimeout(() => modal.querySelector('#droplet-input').focus(), 50);
+    };
+
+    // Cancel = close modal, do NOT save, stay in blood mode
+    modal.querySelector('#droplet-cancel').onclick = () => {
+      modal.remove();
+      // Do NOT call callback — bloodline is not saved, mode stays blood
+    };
+
+    // Skip = save without reason text
+    modal.querySelector('#droplet-skip').onclick = () => {
+      modal.remove();
+      callback('', dirA, dirB);
+    };
+
+    // Save = save with text
+    modal.querySelector('#droplet-save').onclick = () => {
+      const text = modal.querySelector('#droplet-input').value.trim();
+      modal.remove();
+      callback(text, dirA, dirB);
+    };
+
+    // Ctrl+Enter to save
+    modal.querySelector('#droplet-input').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && e.ctrlKey) modal.querySelector('#droplet-save').click();
+      if (e.key === 'Escape') modal.querySelector('#droplet-cancel').click();
+    });
+
+    setTimeout(() => modal.querySelector('#droplet-input').focus(), 80);
+  }
+
+  renderModal();
 }
 
 function cancelBloodlinePick() {
@@ -3374,13 +3613,74 @@ function cancelBloodlinePick() {
   const btn = document.getElementById('bloodline-add-btn');
   btn.classList.remove('picking');
   btn.title = 'Draw bloodline from this node';
+  // Stay in blood mode — do NOT call setMode or change activeMode
 }
 
 function removeBloodline(id) {
-  userBloodlines = userBloodlines.filter(b => b.id !== id);
-  saveBloodlines();
-  renderBloodlineSidebar();
-  applyBloodlineLinks();
+  const bl = userBloodlines.find(b => b.id == id);
+  if (!bl) return;
+  // Confirmation mini-popup
+  const existing = document.getElementById('bl-confirm-' + id);
+  if (existing) { existing.remove(); return; }
+  const confirm = document.createElement('div');
+  confirm.id = 'bl-confirm-' + id;
+  confirm.style.cssText = 'position:fixed;z-index:10005;background:rgba(15,12,30,0.97);border:1px solid rgba(231,76,60,0.5);border-radius:10px;padding:12px 16px;box-shadow:0 8px 30px rgba(0,0,0,0.7);display:flex;flex-direction:column;gap:10px;min-width:220px;backdrop-filter:blur(8px);';
+  // Position near sidebar
+  confirm.style.left = '280px';
+  confirm.style.top = '50%';
+  confirm.style.transform = 'translateY(-50%)';
+  confirm.innerHTML = `
+    <div style="font-size:12px;color:#fff;line-height:1.4;">Delete bloodline<br><span style="color:#e74c3c;font-weight:600;">${bl.sourceLabel} → ${bl.targetLabel}</span>?</div>
+    <div style="display:flex;gap:8px;">
+      <button id="bl-cancel-${id}" style="flex:1;padding:7px;background:transparent;border:1px solid rgba(255,255,255,0.2);border-radius:6px;color:rgba(255,255,255,0.6);font-size:11px;cursor:pointer;">Cancel</button>
+      <button id="bl-delete-${id}" style="flex:1;padding:7px;background:rgba(231,76,60,0.25);border:1px solid rgba(231,76,60,0.5);border-radius:6px;color:#e74c3c;font-size:11px;font-weight:600;cursor:pointer;">Delete</button>
+    </div>
+  `;
+  document.body.appendChild(confirm);
+  document.getElementById('bl-cancel-' + id).onclick = () => confirm.remove();
+  document.getElementById('bl-delete-' + id).onclick = () => {
+    confirm.remove();
+    userBloodlines = userBloodlines.filter(b => b.id != id);
+    saveBloodlines();
+    renderBloodlineSidebar();
+    applyBloodlineLinks();
+    // Also delete from DB
+    if (sbClient && currentUser) {
+      sbClient.from('mindmap_bloodlines').delete().eq('id', id).then(() => {});
+    }
+  };
+  // Close on outside click
+  setTimeout(() => {
+    document.addEventListener('click', function closeConfirm(e) {
+      if (!confirm.contains(e.target)) { confirm.remove(); document.removeEventListener('click', closeConfirm); }
+    });
+  }, 10);
+}
+
+// allBloodlines declared near userBloodlines above
+
+async function syncAllBloodlinesFromDB() {
+  if (!sbClient) return;
+  try {
+    const { data } = await sbClient
+      .from('mindmap_bloodlines')
+      .select('id,source_node,target_node,user_id,droplet_text')
+      .neq('user_id', currentUser ? currentUser.id : '');
+    allBloodlines = (data || []).map(db => {
+      const srcNode = gData.nodes.find(n => n.id === db.source_node);
+      const tgtNode = gData.nodes.find(n => n.id === db.target_node);
+      return {
+        id: db.id,
+        source: db.source_node,
+        target: db.target_node,
+        sourceLabel: srcNode ? srcNode.label.replace(/[^\w\s()\-\/&]/g, '').trim() : db.source_node,
+        targetLabel: tgtNode ? tgtNode.label.replace(/[^\w\s()\-\/&]/g, '').trim() : db.target_node,
+        hasDroplet: !!db.droplet_text,
+        _foreign: true
+      };
+    });
+    renderBloodlineSidebar();
+  } catch(e) { console.error('All bloodlines sync failed:', e); }
 }
 
 function renderBloodlineSidebar() {
@@ -3388,32 +3688,85 @@ function renderBloodlineSidebar() {
   const list = document.getElementById('bloodline-list');
   if (!section || !list) return;
 
-  if (userBloodlines.length === 0) {
-    section.style.display = 'none';
-    return;
-  }
+  const inBloodMode = activeMode === 'blood';
+  const showForeign = inBloodMode && allBloodlines.length > 0;
+  const totalCount = userBloodlines.length + (showForeign ? allBloodlines.length : 0);
+
+  if (totalCount === 0) { section.style.display = 'none'; return; }
   section.style.display = 'block';
   list.innerHTML = '';
 
+  // ── Own bloodlines ──
   userBloodlines.forEach(bl => {
     const item = document.createElement('div');
-    item.className = 'bl-item';
-    item.innerHTML = `
-      <span class="bl-node" onclick="focusNode('${bl.source}')">${bl.sourceLabel}</span>
-      <span class="bl-arrow">→</span>
-      <span class="bl-node" onclick="focusNode('${bl.target}')">${bl.targetLabel}</span>
-      <span style="margin-left:auto;cursor:pointer;opacity:0.4;font-size:9px;" onclick="event.stopPropagation();removeBloodline(${bl.id})">✕</span>
+    item.style.cssText = 'display:flex;flex-direction:column;gap:5px;padding:8px;background:rgba(231,76,60,0.07);border-radius:8px;margin-bottom:5px;border:1px solid rgba(231,76,60,0.15);';
+
+    const mainRow = document.createElement('div');
+    mainRow.style.cssText = 'display:flex;align-items:center;gap:6px;';
+    mainRow.innerHTML = `
+      <span style="font-size:10px;color:rgba(255,255,255,0.85);cursor:pointer;font-weight:600;text-decoration:underline;text-decoration-color:rgba(231,76,60,0.4);" onclick="focusNode('${bl.source}')">${bl.sourceLabel}</span>
+      <span style="color:#e74c3c;font-size:10px;flex-shrink:0;">→</span>
+      <span style="font-size:10px;color:rgba(255,255,255,0.85);cursor:pointer;font-weight:600;text-decoration:underline;text-decoration-color:rgba(231,76,60,0.4);" onclick="focusNode('${bl.target}')">${bl.targetLabel}</span>
+      <span style="margin-left:auto;cursor:pointer;color:rgba(231,76,60,0.4);font-size:11px;padding:2px 4px;border-radius:3px;flex-shrink:0;" title="Delete" onclick="event.stopPropagation();removeBloodline(${bl.id})">✕</span>
     `;
+    item.appendChild(mainRow);
+
+    if (bl.droplet) {
+      const dr = document.createElement('div');
+      dr.style.cssText = 'display:flex;align-items:flex-start;gap:5px;padding-left:2px;';
+      dr.innerHTML = `
+        <span style="color:#e74c3c;font-size:9px;margin-top:2px;">🩸</span>
+        <span style="font-size:10px;color:rgba(255,255,255,0.55);line-height:1.4;flex:1;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">${bl.droplet}</span>
+      `;
+      item.appendChild(dr);
+    }
     list.appendChild(item);
   });
+
+  // ── Other users' bloodlines ──
+  // Show if: in blood mode (all) OR any involve the selectedNode (always visible)
+  const selectedId = selectedNode ? selectedNode.id : null;
+  const relevantForeign = allBloodlines.filter(bl =>
+    inBloodMode || (selectedId && (bl.source === selectedId || bl.target === selectedId))
+  );
+
+  if (relevantForeign.length > 0) {
+    // Sort: bloodlines involving selectedNode first, then rest
+    const sorted = [...relevantForeign].sort((a, b) => {
+      const aRel = selectedId && (a.source === selectedId || a.target === selectedId) ? 0 : 1;
+      const bRel = selectedId && (b.source === selectedId || b.target === selectedId) ? 0 : 1;
+      return aRel - bRel;
+    });
+
+    const sep = document.createElement('div');
+    sep.style.cssText = 'font-size:9px;color:rgba(255,100,100,0.45);text-transform:uppercase;letter-spacing:1px;margin:8px 0 4px;padding-left:2px;';
+    sep.textContent = inBloodMode ? 'Community bloodlines' : '🩸 Bloodlines near this node';
+    list.appendChild(sep);
+
+    sorted.forEach(bl => {
+      const isRelated = selectedId && (bl.source === selectedId || bl.target === selectedId);
+      const item = document.createElement('div');
+      item.style.cssText = `display:flex;align-items:center;gap:6px;padding:6px 8px;background:rgba(180,60,60,${isRelated ? '0.08' : '0.03'});border-radius:7px;margin-bottom:4px;border:1px solid rgba(180,60,60,${isRelated ? '0.2' : '0.07'});`;
+      item.innerHTML = `
+        <span style="font-size:10px;color:rgba(255,255,255,${isRelated ? '0.75' : '0.45'});cursor:pointer;font-weight:${isRelated ? '600' : '400'};" onclick="focusNode('${bl.source}')">${bl.sourceLabel}</span>
+        <span style="color:rgba(200,80,80,0.6);font-size:9px;flex-shrink:0;">→</span>
+        <span style="font-size:10px;color:rgba(255,255,255,${isRelated ? '0.75' : '0.45'});cursor:pointer;font-weight:${isRelated ? '600' : '400'};" onclick="focusNode('${bl.target}')">${bl.targetLabel}</span>
+        ${bl.hasDroplet ? `<span style="margin-left:auto;font-size:${isRelated ? '11' : '9'}px;opacity:${isRelated ? '0.8' : '0.4'};flex-shrink:0;" title="Has reason">🩸</span>` : ''}
+      `;
+      list.appendChild(item);
+    });
+  }
 }
 
 function focusNode(nodeId) {
   const node = gData.nodes.find(n => n.id === nodeId);
   if (node) {
     setSelected(node);
-    Graph.centerAt(node.x, node.y, 600);
-    Graph.zoom(3, 600);
+    Graph.cameraPosition(
+      { x: node.x * 1.8, y: node.y * 1.8, z: node.z * 1.8 },
+      { x: node.x, y: node.y, z: node.z },
+      800
+    );
   }
 }
 
@@ -3441,20 +3794,20 @@ function applyBloodlineLinks() {
   // Re-render with bloodline-aware link styling
   Graph
     .linkColor(link => {
-      if (link._bloodline) {
-        // Pulsing red - use time-based opacity
-        return 'rgba(220,40,40,0.7)';
-      }
+      if (link._bloodline) return 'rgba(231,40,40,0.95)';
       return linkColor(link);
     })
     .linkWidth(link => {
-      if (link._bloodline) return 2.5;
+      if (link._bloodline) return 4;
       return linkWidth(link);
     })
-    .linkDirectionalParticles(link => link._bloodline ? 3 : 0)
-    .linkDirectionalParticleWidth(link => link._bloodline ? 2.5 : 0)
-    .linkDirectionalParticleColor(() => '#e74c3c')
-    .linkDirectionalParticleSpeed(0.006);
+    .linkDirectionalArrowLength(link => link._bloodline ? 6 : 0)
+    .linkDirectionalArrowRelPos(1)
+    .linkDirectionalArrowColor(() => '#ff2222')
+    .linkDirectionalParticles(link => link._bloodline ? 5 : 0)
+    .linkDirectionalParticleWidth(link => link._bloodline ? 3 : 0)
+    .linkDirectionalParticleColor(() => '#ff4444')
+    .linkDirectionalParticleSpeed(link => link._bloodline ? 0.018 : 0);
 }
 
 async function pushBloodlineToDB(bl) {
@@ -3463,7 +3816,8 @@ async function pushBloodlineToDB(bl) {
     await sbClient.from('mindmap_bloodlines').insert({
       user_id: currentUser.id,
       source_node: bl.source,
-      target_node: bl.target
+      target_node: bl.target,
+      droplet_text: bl.droplet || null
     });
   } catch(e) { console.error('Bloodline push failed:', e); }
 }
@@ -3490,6 +3844,7 @@ async function syncBloodlinesFromDB() {
             target: db.target_node,
             sourceLabel: srcNode ? srcNode.label.replace(/[^\w\s()\-\/&]/g, '').trim() : db.source_node,
             targetLabel: tgtNode ? tgtNode.label.replace(/[^\w\s()\-\/&]/g, '').trim() : db.target_node,
+            droplet: db.droplet_text || '',
             created: db.created_at
           });
         }
@@ -3761,8 +4116,7 @@ function updateStats() {
 })();
 
 // ── MODE TOOLBAR ──────────────────────────────────────────────────────────────
-// activeMode: null | 'sculptor' | 'axe' | 'blood' | 'watch'
-let activeMode = null;
+// activeMode declaration moved up — see STATE section above
 
 function spawnStoneParticles(btn) {
   const offsets = [[-9,-8],[-6,-12],[6,-10],[10,-6],[8,6],[-7,8]];
@@ -3803,6 +4157,8 @@ function setMode(mode) {
   // Cancel bloodline picking if leaving blood mode
   if (activeMode === 'blood' && next !== 'blood') {
     if (typeof cancelBloodlinePick === 'function') cancelBloodlinePick();
+    allBloodlines = [];
+    renderBloodlineSidebar();
   }
 
   activeMode = next;
@@ -3819,6 +4175,8 @@ function setMode(mode) {
   } else if (activeMode === 'blood') {
     btnBlood.classList.add('active-blood');
     document.body.classList.add('mode-blood');
+    // Load community bloodlines when entering blood mode
+    syncAllBloodlinesFromDB();
   } else if (activeMode === 'watch') {
     btnWatch.classList.add('active-watch');
     document.body.classList.add('mode-watch', 'watch-mode');
@@ -3919,6 +4277,45 @@ function updateNodeEyeOverlay() {
     nodeEye.classList.add('visible');
   } else {
     nodeEye.classList.remove('visible');
+  }
+}
+
+const bloodDropSource = document.getElementById('blood-drop-source');
+const bloodDropTarget = document.getElementById('blood-drop-target');
+
+function updateBloodDropletOverlays() {
+  const camera = Graph.camera ? Graph.camera() : Graph._camera;
+  if (!camera) { bloodDropSource.classList.remove('visible'); bloodDropTarget.classList.remove('visible'); return; }
+  const rect = graphWrap.getBoundingClientRect();
+  const W = rect.width, H = rect.height;
+  const vec = new THREE.Vector3();
+
+  function projectNode(node, el, icon) {
+    if (!node || !node.x) { el.classList.remove('visible'); return; }
+    vec.set(node.x, node.y, node.z);
+    vec.project(camera);
+    const x = (vec.x * 0.5 + 0.5) * W;
+    const y = (-vec.y * 0.5 + 0.5) * H;
+    if (vec.z < 1 && x > 0 && x < W && y > 0 && y < H) {
+      el.style.left = x + 'px';
+      el.style.top = y + 'px';
+      el.textContent = icon;
+      el.classList.add('visible');
+    } else {
+      el.classList.remove('visible');
+    }
+  }
+
+  if (activeMode === 'blood' && bloodlinePicking && bloodlineSource) {
+    projectNode(bloodlineSource, bloodDropSource, '🩸');
+    // Target: show on hovered node — we use selectedNode as proxy for hover in picking mode
+    bloodDropTarget.classList.remove('visible');
+  } else if (activeMode === 'blood' && bloodlineSource && !bloodlinePicking) {
+    bloodDropSource.classList.remove('visible');
+    bloodDropTarget.classList.remove('visible');
+  } else {
+    bloodDropSource.classList.remove('visible');
+    bloodDropTarget.classList.remove('visible');
   }
 }
 
@@ -4162,32 +4559,36 @@ function updateNodeBadges() {
 }
 
 setInterval(() => {
-  if (!autoRotate) {
-    updateProximityLabels();
-    updateConnectionLabels();
-    updateNodeBadges();
-    return;
-  }
-  const { x, z } = Graph.cameraPosition();
-  const angle = Math.atan2(z, x) + 0.003;
-  const r = Math.sqrt(x*x + z*z);
-  Graph.cameraPosition({ x: r * Math.cos(angle), z: r * Math.sin(angle) });
   updateProximityLabels();
   updateConnectionLabels();
   updateNodeBadges();
   updateNodeEyeOverlay();
+  updateBloodDropletOverlays();
+  if (autoRotate) {
+    const { x, z } = Graph.cameraPosition();
+    const angle = Math.atan2(z, x) + 0.003;
+    const r = Math.sqrt(x*x + z*z);
+    Graph.cameraPosition({ x: r * Math.cos(angle), z: r * Math.sin(angle) });
+  }
 }, 30);
 
 document.getElementById('graph').addEventListener('mousedown', () => autoRotate = false);
 
 // Right-click to activate Watch mode or deselect and return to overview
+// NOTE: Blood mode uses right-click for bloodlines via Graph.onNodeRightClick
 document.getElementById('graph').addEventListener('contextmenu', (e) => {
   e.preventDefault(); // Prevent browser context menu
   e.stopPropagation();
-  console.log('Right-click detected, selectedNode:', selectedNode);
+  console.log('Right-click detected, selectedNode:', selectedNode, 'activeMode:', activeMode);
+  
+  // Blood mode uses right-click for bloodlines - do NOT activate watch mode
+  if (activeMode === 'blood') {
+    console.log('Blood mode active - letting Graph.onNodeRightClick handle this');
+    return;
+  }
   
   if (selectedNode && selectedNode.id) {
-    // Toggle Watch mode - simplify: any right-click on selected node toggles watch mode
+    // Toggle Watch mode - but only if NOT in blood mode
     if (activeMode === 'watch') {
       // Exit Watch mode
       setMode('default');
@@ -4197,8 +4598,8 @@ document.getElementById('graph').addEventListener('contextmenu', (e) => {
         Graph.cameraPosition({ x: 0, y: 0, z: 600 }, { x: 0, y: 0, z: 0 }, 1200);
       }
       console.log('Watch mode deactivated');
-    } else {
-      // Enter Watch mode
+    } else if (activeMode !== 'blood') {
+      // Enter Watch mode (only if not in blood mode)
       setMode('watch');
       console.log('Watch mode activated for node:', selectedNode.label);
     }
