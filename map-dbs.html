@@ -174,31 +174,25 @@
   }
   .node-arms {
     position: absolute;
-    left: calc(100% - 2px);
+    left: calc(100% + 2px);
     top: 50%;
     transform: translateY(-50%);
     display: flex;
     flex-direction: column;
-    gap: 5px;
-    padding-left: 20px;
+    gap: 4px;
     pointer-events: none;
     z-index: 20;
   }
   .node-arm {
     position: relative;
-    width: 34px;
+    width: 14px;
     height: 10px;
     pointer-events: auto;
+    cursor: pointer;
   }
   .node-arm::before {
     content: '';
-    position: absolute;
-    left: -20px;
-    top: 4px;
-    width: 36px;
-    height: 2px;
-    background: linear-gradient(90deg, var(--arm-color, rgba(241,196,15,0.65)), var(--arm-color-fade, rgba(241,196,15,0.16)));
-    border-radius: 99px;
+    display: none;
   }
   .node-arm::after {
     content: '';
@@ -209,14 +203,14 @@
     height: 8px;
     border-radius: 50%;
     background: var(--arm-color, #f1c40f);
-    box-shadow: 0 0 12px var(--arm-color-glow, rgba(241,196,15,0.55));
-  }
-  .node-arm:hover::before {
-    background: linear-gradient(90deg, var(--arm-color, rgba(241,196,15,0.95)), var(--arm-color-fade, rgba(241,196,15,0.42)));
+    box-shadow: 0 0 8px var(--arm-color-glow, rgba(241,196,15,0.4));
+    opacity: 0;
+    transition: opacity 0.2s, transform 0.2s;
   }
   .node-arm:hover::after {
-    transform: scale(1.25);
-    box-shadow: 0 0 18px var(--arm-color-glow, rgba(241,196,15,0.85));
+    opacity: 1;
+    transform: scale(1.4);
+    box-shadow: 0 0 16px var(--arm-color-glow, rgba(241,196,15,0.9));
   }
   .arm-tooltip {
     position: absolute;
@@ -298,6 +292,7 @@
     stroke-width: 2;
     transition: stroke-width 0.2s, opacity 0.2s;
     pointer-events: stroke;
+    cursor: pointer;
   }
   .connection-line:hover {
     stroke-width: 4;
@@ -575,7 +570,6 @@ function buildSvgConnections() {
   const pills = document.querySelectorAll('.node-pill');
   const pointMap = {};
   const mainRect = document.getElementById('main').getBoundingClientRect();
-  const bottomEdge = mainRect.height - 50;
 
   pills.forEach(pill => {
     const arms = pill.querySelectorAll('.node-arm');
@@ -590,21 +584,42 @@ function buildSvgConnections() {
       const color = arm.style.getPropertyValue('--arm-color') || '#f1c40f';
 
       if (!pointMap[targetId]) {
-        pointMap[targetId] = { x: startX, y: bottomEdge, color, nodes: [] };
+        pointMap[targetId] = { color, nodes: [] };
       }
       pointMap[targetId].nodes.push({ x: startX, y: startY, color, pillId: pill.id });
     });
   });
 
+  // For each 3D target, create ONE shared convergence point
   Object.keys(pointMap).forEach(targetId => {
     const point = pointMap[targetId];
+    // Position the shared dot to the right of the first pill that references it
+    const firstNode = point.nodes[0];
+    const sharedX = firstNode.x + 40;
+    const sharedY = firstNode.y;
+
+    // Render visible dot at convergence point
+    const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    dot.setAttribute('cx', sharedX);
+    dot.setAttribute('cy', sharedY);
+    dot.setAttribute('r', 5);
+    dot.setAttribute('fill', point.color);
+    dot.setAttribute('class', 'connection-dot');
+    dot.setAttribute('data-target-id', targetId);
+    dot.style.filter = `drop-shadow(0 0 6px ${point.color}80)`;
+    dot.style.cursor = 'pointer';
+    dot.style.pointerEvents = 'auto';
+    svg.appendChild(dot);
+
+    // Draw curves from each pill to the shared dot
     point.nodes.forEach(node => {
       const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-      const midX = (node.x + point.x) / 2;
-      const midY = (node.y + point.y) / 2;
-      const controlOffsetX = 80;
-      const controlOffsetY = 200;
-      const d = `M ${node.x} ${node.y} C ${node.x + controlOffsetX} ${node.y + controlOffsetY}, ${midX} ${midY - controlOffsetY}, ${point.x} ${point.y}`;
+      const dx = sharedX - node.x;
+      const cp1x = node.x + dx * 0.4;
+      const cp1y = node.y;
+      const cp2x = sharedX - dx * 0.2;
+      const cp2y = sharedY;
+      const d = `M ${node.x} ${node.y} C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${sharedX} ${sharedY}`;
       
       path.setAttribute('d', d);
       path.setAttribute('stroke', node.color);
@@ -613,7 +628,7 @@ function buildSvgConnections() {
       path.setAttribute('data-source-pill', node.pillId);
       
       svg.appendChild(path);
-      svgConnections.push({ path, targetId, sourcePillId: node.pillId });
+      window.svgConnections.push({ path, targetId, sourcePillId: node.pillId, dot });
     });
   });
 }
@@ -621,9 +636,9 @@ function buildSvgConnections() {
 function calculateDynamicOpacity(path, sourcePillId) {
   const boxes = document.querySelectorAll('.branch-card');
   const sourcePill = document.getElementById(sourcePillId);
-  if (!sourcePill) return 1;
+  if (!sourcePill) return 0.05;
   
-  let opacity = 1;
+  let opacity = 0.05;
   
   boxes.forEach(box => {
     if (box === sourcePill.closest('.branch-card')) return;
@@ -639,7 +654,7 @@ function calculateDynamicOpacity(path, sourcePillId) {
     for (let i = 0; i < pathLength; i += 10) {
       const point = path.getPointAtLength(i);
       if (point.x >= boxX && point.x <= boxX + boxW && point.y >= boxY && point.y <= boxY + boxH) {
-        opacity = Math.min(opacity, 0.2);
+        opacity = Math.min(opacity, 0.02);
         break;
       }
     }
@@ -649,12 +664,28 @@ function calculateDynamicOpacity(path, sourcePillId) {
 }
 
 function updateDynamicOpacity(highlightTargetId = null) {
-  svgConnections.forEach(conn => {
+  window.svgConnections.forEach(conn => {
     let opacity = calculateDynamicOpacity(conn.path, conn.sourcePillId);
     if (highlightTargetId && conn.targetId === highlightTargetId) {
       opacity = 1;
+      conn.path.setAttribute('stroke-width', 3);
+    } else if (highlightTargetId) {
+      conn.path.setAttribute('stroke-width', 2);
+    } else {
+      conn.path.setAttribute('stroke-width', 2);
     }
     conn.path.setAttribute('opacity', opacity);
+  });
+  
+  // Highlight shared dots
+  const dots = svg.querySelectorAll('.connection-dot');
+  dots.forEach(dot => {
+    const dotTargetId = dot.getAttribute('data-target-id');
+    if (highlightTargetId && dotTargetId === highlightTargetId) {
+      dot.setAttribute('r', 7);
+    } else {
+      dot.setAttribute('r', 5);
+    }
   });
 }
 
@@ -682,6 +713,19 @@ document.querySelectorAll('.node-arm').forEach(arm => {
   arm.addEventListener('mouseleave', () => {
     updateDynamicOpacity();
   });
+});
+
+svg.addEventListener('mouseover', (e) => {
+  if (e.target.classList && e.target.classList.contains('connection-dot')) {
+    const targetId = e.target.getAttribute('data-target-id');
+    updateDynamicOpacity(targetId);
+  }
+});
+
+svg.addEventListener('mouseout', (e) => {
+  if (e.target.classList && e.target.classList.contains('connection-dot')) {
+    updateDynamicOpacity();
+  }
 });
 
 setTimeout(initSvg, 1000);
