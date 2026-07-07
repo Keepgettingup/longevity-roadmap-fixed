@@ -2782,6 +2782,12 @@ try {
   Graph = { cameraPosition: ()=>{}, camera: ()=>null, d3ReheatSimulation: ()=>{}, _camera: null };
 }
 
+// Auto-focus node from URL param (?focus=nodeId)
+const focusParam = new URLSearchParams(window.location.search).get('focus');
+if (focusParam) {
+  setTimeout(() => focusNode(focusParam), 1200);
+}
+
 // ── 2D MAP OVERLAY ────────────────────────────────────────────────────────────
 const map2dOverlay  = document.getElementById('map2d-overlay');
 const map2dBody     = document.getElementById('map2d-body');
