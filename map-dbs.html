@@ -263,6 +263,7 @@
     flex-direction: column;
     gap: 4px;
     min-width: 170px;
+    max-width: 340px;
     box-shadow: 0 10px 40px rgba(0,0,0,0.6);
     animation: bubbleIn 0.18s ease both;
   }
@@ -423,6 +424,48 @@ const DBS_DATA = {
       { id:"dbs_fus_ai_aberration",  label:"AI / Deep-Learning Aberration Correction (CNN)", type:"method", arms3d:["ce_fus","ce_cortical"] },
       { id:"dbs_fus_multifocus",     label:"Multi-Focus Acoustic Holograms (simultaneous targets)", type:"device", arms3d:["ce_fus","mc_photonic"] },
     ]},
+    { id:"dbs_pseudoct", label:"Pseudo-CT Skull Generation", type:"method", nodes:[
+      { id:"dbs_pct_what", label:"Pseudo-CT: CT-equivalent skull map from MRI (no CT scan needed)", type:"theory", arms3d:["mc_optics","ce_fus"], sources:[
+        "https://pubmed.ncbi.nlm.nih.gov/?term=pseudo-CT+MRI+skull+transcranial+ultrasound",
+        "Pseudo-CT synthesizes a CT-like attenuation map of the skull from MRI data, enabling transcranial ultrasound simulation without an actual CT scan."
+      ]},
+      { id:"dbs_pct_zte", label:"ZTE (Zero Echo Time) MRI — bone-sensitive sequence", type:"device", arms3d:["mc_optics"], sources:[
+        "https://pubmed.ncbi.nlm.nih.gov/?term=zero+echo+time+ZTE+bone+MRI+skull",
+        "ZTE captures signal from tissues with very short T2 (like bone) by using near-zero echo time. Standard T1/T2 MRI cannot see bone — ZTE can."
+      ]},
+      { id:"dbs_pct_ute", label:"UTE (Ultrashort Echo Time) MRI — alternative bone sequence", type:"device", arms3d:["mc_optics"], sources:[
+        "https://pubmed.ncbi.nlm.nih.gov/?term=ultrashort+echo+time+UTE+bone+MRI",
+        "UTE is another short-TE approach for bone imaging. Slightly longer echo than ZTE but more widely available on clinical scanners."
+      ]},
+      { id:"dbs_pct_petra", label:"PETRA Sequence (2025) — optimized for stronger bone signal", type:"device", arms3d:["mc_optics"], sources:[
+        "https://pubmed.ncbi.nlm.nih.gov/?term=PETRA+MRI+bone+skull+2025",
+        "PETRA (Pointwise Encoding Time Reduction with Radial Acquisition) combines ZTE-like short TE with radial sampling, improving bone SNR and reducing artifacts."
+      ]},
+      { id:"dbs_pct_unet", label:"Deep Learning Synthesis — U-Net / conditional-GAN (paired MR→CT)", type:"method", arms3d:["ce_cortical","mc_optics"], sources:[
+        "https://pubmed.ncbi.nlm.nih.gov/?term=pseudo-CT+deep+learning+U-Net+GAN+MRI+CT+synthesis",
+        "U-Net and conditional-GAN models trained on paired MR-CT datasets generate pseudo-CT from either a plain T1-weighted scan or a ZTE scan."
+      ]},
+      { id:"dbs_pct_t1_input", label:"Plain T1-weighted MRI as input (lower accuracy)", type:"resource", arms3d:["mc_optics"], sources:[
+        "https://pubmed.ncbi.nlm.nih.gov/?term=pseudo-CT+T1-weighted+MRI+synthesis+accuracy",
+        "T1-only pseudo-CT works but is less accurate than ZTE/UTE-based methods — bone boundaries are blurrier, attenuation estimates less precise."
+      ]},
+      { id:"dbs_pct_zte_input", label:"ZTE/UTE scan as input (higher accuracy)", type:"resource", arms3d:["mc_optics"], sources:[
+        "https://pubmed.ncbi.nlm.nih.gov/?term=ZTE+pseudo-CT+vs+T1+pseudo-CT+accuracy+comparison",
+        "ZTE/UTE-based pseudo-CTs outperform plain-T1-based ones in skull attenuation accuracy, especially near sinuses and dense bone regions."
+      ]},
+      { id:"dbs_pct_validation", label:"Validation: pseudo-CT focal pressures ≈ real-CT (statistically equivalent)", type:"mechanism", arms3d:["ce_fus","mc_optics"], sources:[
+        "https://pubmed.ncbi.nlm.nih.gov/?term=pseudo-CT+transcranial+ultrasound+simulation+validation+real+CT+comparison",
+        "Recent studies show pseudo-CT-based transcranial simulations produce focal pressures statistically equivalent to real-CT-based ones — a genuinely viable substitute."
+      ]},
+      { id:"dbs_pct_why", label:"Why it matters: eliminates CT radiation dose for FUS planning", type:"theory", arms3d:["ce_fus"], sources:[
+        "https://pubmed.ncbi.nlm.nih.gov/?term=transcranial+focused+ultrasound+planning+CT+radiation+pseudo-CT",
+        "Replacing CT with pseudo-CT for skull aberration correction removes ionizing radiation from the FUS planning workflow — full MRI-only pipeline."
+      ]},
+      { id:"dbs_pct_pipeline", label:"Full MRI-only pipeline: ZTE→pseudo-CT→aberration correction→FUS sim", type:"method", arms3d:["ce_fus","mc_optics"], sources:[
+        "https://pubmed.ncbi.nlm.nih.gov/?term=MRI-only+transcranial+focused+ultrasound+pipeline+pseudo-CT",
+        "End-to-end: acquire ZTE MRI → generate pseudo-CT → compute skull aberration map → run time-reversal/hybrid aberration correction → simulate FUS focal spot."
+      ]},
+    ]},
     { id:"dbs_suppliers", label:"Suppliers & Institutes", type:"resource", nodes:[
       { id:"dbs_fhc",      label:"FHC Inc.", type:"resource" },
       { id:"dbs_wpi",      label:"World Precision Instruments", type:"resource" },
@@ -576,6 +619,26 @@ function showCatBubble(e, nodeData, secData) {
     opt.onclick = () => { bubble.remove(); alert(`${cat.label} für: ${nodeData.label}\n(Coming soon)`); };
     bubble.appendChild(opt);
   });
+
+  if (nodeData.sources && nodeData.sources.length) {
+    const srcHeader = document.createElement('div');
+    srcHeader.style.cssText = 'font-size:9px;text-transform:uppercase;letter-spacing:1px;color:rgba(241,196,15,0.6);padding:6px 10px 2px;border-top:1px solid rgba(255,255,255,0.08);margin-top:4px;';
+    srcHeader.textContent = 'Sources & Info';
+    bubble.appendChild(srcHeader);
+
+    nodeData.sources.forEach(src => {
+      const srcEl = document.createElement('div');
+      srcEl.className = 'cat-option';
+      if (src.startsWith('http')) {
+        srcEl.innerHTML = `<span class="cat-icon">🔗</span><span style="font-size:10px;color:rgba(135,206,235,0.9);text-decoration:underline;">${src.length > 50 ? src.slice(0, 50) + '…' : src}</span>`;
+        srcEl.onclick = () => window.open(src, '_blank');
+      } else {
+        srcEl.innerHTML = `<span class="cat-icon">📖</span><span style="font-size:10px;line-height:1.3;white-space:normal;">${src}</span>`;
+        srcEl.style.cursor = 'default';
+      }
+      bubble.appendChild(srcEl);
+    });
+  }
 
   document.body.appendChild(bubble);
   setTimeout(() => {
