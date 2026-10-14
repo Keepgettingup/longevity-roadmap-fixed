@@ -1474,7 +1474,7 @@
 <!-- SIDEBAR -->
 <div id="sidebar">
   <div id="sidebar-header">
-    <h2>Knowledge Map</h2>
+    <h2>Knowledge Map <a href="instructions.html" style="font-size:9px;color:rgba(241,196,15,0.5);text-decoration:none;margin-left:8px;padding:2px 8px;border:1px solid rgba(241,196,15,0.2);border-radius:10px;vertical-align:middle;transition:all 0.2s;" onmouseover="this.style.color='#f1c40f';this.style.borderColor='rgba(241,196,15,0.4)'" onmouseout="this.style.color='rgba(241,196,15,0.5)';this.style.borderColor='rgba(241,196,15,0.2)'">Instructions</a></h2>
     <div id="mode-toolbar">
 
       <!-- SCULPTOR 🗿 -->
@@ -1733,8 +1733,12 @@ async function initAuth() {
       currentUser = session.user;
       hideLoginOverlay();
       updateAuthUI();
+      await loadUserProfile();
       await syncVotesFromDB();
       await syncBloodlinesFromDB();
+      await syncWatchlistToDB();
+      await loadAutoCrosslinks();
+      await loadNotifications();
     } else {
       showLoginOverlay();
     }
@@ -1760,12 +1764,14 @@ async function initAuth() {
           currentUser = session.user;
           hideLoginOverlay();
           updateAuthUI();
+          await loadUserProfile();
           if (!lastUserId) {
             await syncVotesFromDB();
             await syncBloodlinesFromDB();
           }
         } else {
           currentUser = null;
+          userProfile = null;
           updateAuthUI();
           showLoginOverlay();
         }
@@ -1830,6 +1836,7 @@ async function signOut() {
   if (!sbClient) return;
   await sbClient.auth.signOut();
   currentUser = null;
+  userProfile = null;
   updateAuthUI();
 }
 
@@ -1861,6 +1868,13 @@ function updateAuthUI() {
       ? `<img src="${avatar}" style="width:18px;height:18px;border-radius:50%;">`
       : `<span style="width:18px;height:18px;border-radius:50%;background:rgba(120,80,255,0.4);display:flex;align-items:center;justify-content:center;font-size:9px;color:#fff;">${name[0].toUpperCase()}</span>`;
     badge.innerHTML += `<span style="color:rgba(255,255,255,0.6);">${name}</span>`;
+    if (typeof userProfile !== 'undefined' && userProfile) {
+      const h = HORIZONS.find(x => x.id === userProfile.horizon_type) || HORIZONS[1];
+      const actDot = { viel_aktiv:'#2ecc71', aktiv:'#f1c40f', wenig_aktiv:'#e67e22', inaktiv:'#7f8c8d' }[userProfile.activity_level || 'aktiv'];
+      badge.innerHTML += `<span title="${h.label} — ${h.desc}" style="font-size:11px;">${h.icon}</span>`;
+      if (canGrantBigBrain()) badge.innerHTML += `<span title="Verified expert — can grant Big Brain" style="font-size:11px;">🧠</span>`;
+      badge.innerHTML += `<span title="Activity: ${(userProfile.activity_level||'aktiv').replace('_',' ')}" style="width:6px;height:6px;border-radius:50%;background:${actDot};"></span>`;
+    }
     badge.onclick = showAuthMenu;
     badge.title = 'Click for menu';
   } else {
@@ -1914,7 +1928,7 @@ function showAuthMenu(e) {
       menu.remove();
       if (action === 'logout') signOut();
       else if (action === 'sync') { syncVotesFromDB(); syncBloodlinesFromDB(); alert('Synced!'); }
-      else if (action === 'profile') alert('Profile page coming soon!');
+      else if (action === 'profile') openProfileModal();
     };
   });
   
@@ -1928,6 +1942,592 @@ function showAuthMenu(e) {
     });
   }, 10);
 }
+
+// ══════════════════════════════════════════════════════════════════════════
+// USER PROFILE · FINGERPRINT · FLYNESS ENGINE · COMPOSITE EXPERTISE
+// ══════════════════════════════════════════════════════════════════════════
+
+const PROFESSIONS = [
+  { id:'chemist',        label:'Chemist',           icon:'⚗️',  clusters:['bp','mc'] },
+  { id:'physicist',      label:'Physicist',         icon:'🔭',  clusters:['mc','na'] },
+  { id:'computer_tech',  label:'Computer Tech',     icon:'💻',  clusters:['na','ce'] },
+  { id:'electronics',    label:'Electronics Eng.',  icon:'🔌',  clusters:['na','mc'] },
+  { id:'geneticist',     label:'Geneticist',        icon:'🧬',  clusters:['il','bp'] },
+  { id:'human_biologist',label:'Human Biologist',   icon:'🫀',  clusters:['il','bp','ce'] },
+  { id:'other',          label:'Other / Generalist',icon:'🌐',  clusters:[] },
+];
+
+const LEVELS = [
+  { id:'beginner',     label:'Beginner',           base:0.10 },
+  { id:'intermediate', label:'Intermediate',       base:0.30 },
+  { id:'advanced',     label:'Advanced',           base:0.50 },
+  { id:'expert',       label:'Expert',             base:0.75 },
+  { id:'phd_prof',     label:'PhD / Professor',    base:0.90 },
+];
+
+const HORIZONS = [
+  { id:'diver',  label:'Diver',  icon:'🤿', desc:'Deep focus on few specific problems' },
+  { id:'surfer', label:'Surfer', icon:'🏄', desc:'Balanced across a handful of areas' },
+  { id:'flyer',  label:'Flyer',  icon:'🕊️', desc:'Broad overview, compares many topics' },
+];
+
+const BIG_BRAIN_THRESHOLD = 0.65;   // composite_level required to grant 🧠
+const CLUSTER_PREFIXES = ['il','bp','na','ce','mc'];
+
+let userProfile = null;
+let horizonCalibration = { theta_diver: -0.30, theta_flyer: 0.30 };
+
+// ── Browser fingerprint (SHA-256 over canvas + hardware signature) ──────────
+async function sha256Hex(str) {
+  const data = new TextEncoder().encode(str);
+  const buf = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+function canvasSignature() {
+  try {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    ctx.textBaseline = 'top';
+    ctx.font = '14px Arial';
+    ctx.fillStyle = '#f60';
+    ctx.fillRect(125, 1, 62, 20);
+    ctx.fillStyle = '#069';
+    ctx.fillText('gs-commie??', 2, 15);
+    ctx.fillStyle = 'rgba(102,204,0,0.7)';
+    ctx.fillText('gs-commie??', 4, 17);
+    return canvas.toDataURL();
+  } catch { return 'no-canvas'; }
+}
+
+async function getFingerprint() {
+  const cached = localStorage.getItem('gs_fingerprint');
+  if (cached) return cached;
+  const components = [
+    navigator.userAgent,
+    navigator.language,
+    screen.width + 'x' + screen.height + 'x' + screen.colorDepth,
+    new Date().getTimezoneOffset().toString(),
+    navigator.hardwareConcurrency?.toString() || 'unknown',
+    navigator.deviceMemory?.toString() || 'unknown',
+    navigator.platform || 'unknown',
+    canvasSignature(),
+  ];
+  const fp = await sha256Hex(components.join('|'));
+  localStorage.setItem('gs_fingerprint', fp);
+  return fp;
+}
+
+// ── Activity event log (active triggers only — no passive timers) ───────────
+function clusterOf(nodeId) {
+  if (!nodeId) return null;
+  const pre = String(nodeId).split('_')[0];
+  return CLUSTER_PREFIXES.includes(pre) ? pre : 'other';
+}
+
+function loadLocalEvents() {
+  try { return JSON.parse(localStorage.getItem('gs_events') || '[]'); } catch { return []; }
+}
+
+function saveLocalEvents(list) {
+  localStorage.setItem('gs_events', JSON.stringify(list.slice(-800)));
+}
+
+function logActivity(eventType, nodeId, depthScore) {
+  const ev = {
+    event_type: eventType,
+    node_id: nodeId || null,
+    cluster_id: clusterOf(nodeId),
+    depth_score: typeof depthScore === 'number' ? depthScore : 0,
+    created_at: new Date().toISOString(),
+  };
+  const list = loadLocalEvents();
+  list.push(ev);
+  saveLocalEvents(list);
+
+  if (sbClient && currentUser) {
+    sbClient.from('mindmap_activity_events').insert({
+      user_id: currentUser.id,
+      event_type: ev.event_type,
+      node_id: ev.node_id,
+      cluster_id: ev.cluster_id,
+      domain: userProfile?.profession || null,
+      depth_score: ev.depth_score,
+    }).then(() => {}, () => {});
+  }
+  scheduleFlynessRecompute();
+}
+
+let _flynessTimer = null;
+function scheduleFlynessRecompute() {
+  clearTimeout(_flynessTimer);
+  _flynessTimer = setTimeout(() => { computeAndPersistFlyness(); }, 4000);
+}
+
+// ── Flyness sub-dimensions ─────────────────────────────────────────────────
+// Each returns [-1 .. +1]:  -1 = deep Diver, +1 = broad Flyer
+
+function shannonSpread(counts) {
+  const vals = Object.values(counts).filter(v => v > 0);
+  if (vals.length <= 1) return 0;
+  const total = vals.reduce((a,b) => a+b, 0);
+  const H = -vals.reduce((acc,v) => { const p = v/total; return acc + p*Math.log(p); }, 0);
+  return H / Math.log(vals.length);   // 0..1 normalized entropy
+}
+
+// F_expertise — activity outside the user's declared profession clusters
+function flynessExpertise(events) {
+  const prof = PROFESSIONS.find(p => p.id === userProfile?.profession);
+  const home = new Set(prof?.clusters || []);
+  if (!home.size || !events.length) return 0;
+  let inside = 0, outside = 0;
+  events.forEach(e => { if (e.cluster_id) (home.has(e.cluster_id) ? inside++ : outside++); });
+  const total = inside + outside;
+  if (!total) return 0;
+  return (outside / total) * 2 - 1;
+}
+
+// F_themen — spread across distinct 3D main branches (watchlist + interactions)
+function flynessThemen(events) {
+  const counts = {};
+  events.forEach(e => { if (e.cluster_id) counts[e.cluster_id] = (counts[e.cluster_id]||0) + 1; });
+  const watch = getWatchedClusters();
+  watch.forEach(c => { counts[c] = (counts[c]||0) + 2; });
+  const distinct = Object.keys(counts).length;
+  if (!distinct) return 0;
+  const spread = shannonSpread(counts);
+  const breadth = Math.min(distinct / CLUSTER_PREFIXES.length, 1);
+  return (spread * 0.5 + breadth * 0.5) * 2 - 1;
+}
+
+// F_2d — breadth of 2D mindmap exploration vs deep contribution inside one tree
+function flyness2d(events) {
+  const twoD = events.filter(e => e.event_type === 'map2d_open' || e.event_type === 'map2d_entry');
+  if (!twoD.length) return 0;
+  const counts = {};
+  twoD.forEach(e => { const k = e.node_id || 'x'; counts[k] = (counts[k]||0) + 1; });
+  const distinct = Object.keys(counts).length;
+  const contributions = twoD.filter(e => e.event_type === 'map2d_entry').length;
+  const breadth = Math.min(distinct / 5, 1);
+  const depth = Math.min(contributions / Math.max(distinct,1) / 3, 1);
+  return (breadth - depth);
+}
+
+// F_post — quantity of shallow posts vs depth (sources, datasets, length)
+function flynessPost(events) {
+  const posts = events.filter(e => e.event_type === 'entry' || e.event_type === 'droplet');
+  if (!posts.length) return 0;
+  const avgDepth = posts.reduce((a,e) => a + (e.depth_score || 0), 0) / posts.length;
+  return 1 - Math.min(avgDepth, 1) * 2;
+}
+
+function getWatchedClusters() {
+  try {
+    const w = JSON.parse(localStorage.getItem('watchedNodes') || '[]');
+    return [...new Set(w.map(clusterOf).filter(Boolean))];
+  } catch { return []; }
+}
+
+function computeFlyness() {
+  const events = loadLocalEvents();
+  const fe = flynessExpertise(events);
+  const ft = flynessThemen(events);
+  const f2 = flyness2d(events);
+  const fp = flynessPost(events);
+  const composite = 0.30*fe + 0.35*ft + 0.20*f2 + 0.15*fp;
+  return {
+    flyness_expertise: +fe.toFixed(4),
+    flyness_themen:    +ft.toFixed(4),
+    flyness_2d:        +f2.toFixed(4),
+    flyness_post:      +fp.toFixed(4),
+    flyness_composite: +composite.toFixed(4),
+  };
+}
+
+function horizonFromScore(score) {
+  if (score < horizonCalibration.theta_diver) return 'diver';
+  if (score > horizonCalibration.theta_flyer) return 'flyer';
+  return 'surfer';
+}
+
+function computeActivityLevel() {
+  const events = loadLocalEvents();
+  const now = Date.now();
+  const last = events.length ? new Date(events[events.length-1].created_at).getTime() : 0;
+  const week = events.filter(e => now - new Date(e.created_at).getTime() < 7*864e5).length;
+  const since = now - last;
+  if (since < 2*864e5 && week > 5) return 'viel_aktiv';
+  if (since < 7*864e5)  return 'aktiv';
+  if (since < 30*864e5) return 'wenig_aktiv';
+  return 'inaktiv';
+}
+
+// Composite expertise level: education baseline + on-platform track record
+function computeCompositeLevel(p) {
+  const base = LEVELS.find(l => l.id === (p?.profession_level))?.base ?? 0.10;
+  const likes = (p?.droplet_likes_count || 0) + (p?.splitter_likes_count || 0);
+  const brains = p?.big_brain_count || 0;
+  const pruningReward = p?.pruning_reward_total || 0;
+  const track = Math.min(likes / 50, 1) * 0.6 + Math.min(brains / 10, 1) * 0.4;
+  return +Math.min(1, base * 0.5 + track * 0.5 + pruningReward).toFixed(4);
+}
+
+function canGrantBigBrain() {
+  return !!currentUser && (userProfile?.composite_level || 0) >= BIG_BRAIN_THRESHOLD;
+}
+
+async function computeAndPersistFlyness() {
+  if (!userProfile) return;
+  const fly = computeFlyness();
+  const activity = computeActivityLevel();
+  Object.assign(userProfile, fly);
+  userProfile.activity_level = activity;
+  userProfile.horizon_type = horizonFromScore(fly.flyness_composite);
+  userProfile.composite_level = computeCompositeLevel(userProfile);
+
+  if (sbClient && currentUser) {
+    try {
+      await sbClient.from('mindmap_profiles').update({
+        ...fly,
+        activity_level: activity,
+        horizon_type: userProfile.horizon_type,
+        composite_level: userProfile.composite_level,
+        last_seen_at: new Date().toISOString(),
+      }).eq('id', currentUser.id);
+    } catch(e) { console.warn('Flyness persist failed', e); }
+  }
+  updateAuthUI();
+}
+
+// ── Profile load / bootstrap ───────────────────────────────────────────────
+async function loadUserProfile() {
+  if (!sbClient || !currentUser) return null;
+  const fingerprint = await getFingerprint();
+  try {
+    const { data } = await sbClient.from('mindmap_profiles')
+      .select('*').eq('id', currentUser.id).maybeSingle();
+
+    if (!data) {
+      const seed = {
+        id: currentUser.id,
+        display_name: currentUser.user_metadata?.full_name || currentUser.email?.split('@')[0] || 'User',
+        avatar_url: currentUser.user_metadata?.avatar_url || null,
+        fingerprint,
+        login_count: 1,
+        last_seen_at: new Date().toISOString(),
+      };
+      const { data: created } = await sbClient.from('mindmap_profiles')
+        .insert(seed).select().maybeSingle();
+      userProfile = created || seed;
+    } else {
+      userProfile = data;
+      await sbClient.from('mindmap_profiles').update({
+        fingerprint,
+        login_count: (data.login_count || 0) + 1,
+        last_seen_at: new Date().toISOString(),
+      }).eq('id', currentUser.id);
+    }
+
+    const { data: calib } = await sbClient.from('mindmap_horizon_calibration')
+      .select('theta_diver,theta_flyer').eq('id', 1).maybeSingle();
+    if (calib) horizonCalibration = calib;
+
+    userProfile.composite_level = computeCompositeLevel(userProfile);
+    logActivity('login', null, 0);
+    updateAuthUI();
+
+    if (!userProfile.survey_completed && (userProfile.survey_stage || 0) < 1) {
+      setTimeout(() => openQuickSurvey(), 900);
+    }
+    return userProfile;
+  } catch(e) { console.warn('Profile load failed', e); return null; }
+}
+
+async function saveProfile(patch) {
+  if (!userProfile) return;
+  Object.assign(userProfile, patch);
+  userProfile.composite_level = computeCompositeLevel(userProfile);
+  if (sbClient && currentUser) {
+    try {
+      await sbClient.from('mindmap_profiles')
+        .update({ ...patch, composite_level: userProfile.composite_level, updated_at: new Date().toISOString() })
+        .eq('id', currentUser.id);
+    } catch(e) { console.warn('Profile save failed', e); }
+  }
+  updateAuthUI();
+  refreshOwnStats();
+}
+
+// ── Shared modal styling ───────────────────────────────────────────────────
+function ensureProfileStyles() {
+  if (document.getElementById('gs-profile-styles')) return;
+  const s = document.createElement('style');
+  s.id = 'gs-profile-styles';
+  s.textContent = `
+    @keyframes gsModalIn { from { opacity:0; transform:translate(-50%,-46%);} to {opacity:1; transform:translate(-50%,-50%);} }
+    .gs-modal {
+      position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
+      background:rgba(12,10,26,0.985); border:1px solid rgba(241,196,15,0.35);
+      border-radius:16px; padding:26px 28px; z-index:10050;
+      width:min(560px, 92vw); max-height:86vh; overflow-y:auto;
+      box-shadow:0 24px 70px rgba(0,0,0,0.75); backdrop-filter:blur(14px);
+      animation:gsModalIn .25s ease; color:#fff; font-size:12px;
+    }
+    .gs-modal h3 { font-size:16px; margin:0 0 4px; color:#fff; font-weight:600; }
+    .gs-modal .sub { font-size:10px; color:rgba(255,255,255,0.4); margin-bottom:18px; }
+    .gs-label { display:block; font-size:9px; letter-spacing:1.4px; text-transform:uppercase;
+      color:rgba(241,196,15,0.65); margin:16px 0 8px; }
+    .gs-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); gap:8px; }
+    .gs-opt {
+      padding:10px 12px; border-radius:10px; cursor:pointer; text-align:left;
+      background:rgba(255,255,255,0.035); border:1px solid rgba(255,255,255,0.09);
+      color:rgba(255,255,255,0.8); font-size:11px; transition:all .18s; font-family:inherit;
+      display:flex; align-items:center; gap:8px;
+    }
+    .gs-opt:hover { background:rgba(255,255,255,0.07); border-color:rgba(241,196,15,0.3); }
+    .gs-opt.sel { background:rgba(241,196,15,0.14); border-color:#f1c40f; color:#fff; }
+    .gs-opt small { display:block; color:rgba(255,255,255,0.4); font-size:9px; margin-top:2px; }
+    .gs-input {
+      width:100%; box-sizing:border-box; background:rgba(0,0,0,0.4);
+      border:1px solid rgba(255,255,255,0.12); border-radius:8px; padding:9px 11px;
+      color:#fff; font-size:11px; font-family:inherit;
+    }
+    .gs-actions { display:flex; gap:10px; justify-content:flex-end; margin-top:24px; }
+    .gs-btn { padding:9px 20px; border-radius:8px; font-size:11px; cursor:pointer; font-family:inherit; border:none; }
+    .gs-btn.ghost { background:transparent; border:1px solid rgba(255,255,255,0.18); color:rgba(255,255,255,0.5); }
+    .gs-btn.primary { background:linear-gradient(135deg,#f1c40f,#d4a409); color:#1a1408; font-weight:700; }
+    .gs-meter { height:6px; border-radius:99px; background:rgba(255,255,255,0.08); overflow:hidden; margin-top:5px; }
+    .gs-meter i { display:block; height:100%; background:linear-gradient(90deg,#3498db,#f1c40f); }
+    .gs-row { display:flex; justify-content:space-between; align-items:center;
+      padding:7px 0; border-bottom:1px solid rgba(255,255,255,0.06); font-size:11px; }
+    .gs-row span:last-child { color:#f1c40f; font-weight:600; }
+  `;
+  document.head.appendChild(s);
+}
+
+function closeGsModals() {
+  document.querySelectorAll('.gs-modal, .gs-backdrop').forEach(n => n.remove());
+}
+
+function gsBackdrop() {
+  const b = document.createElement('div');
+  b.className = 'gs-backdrop';
+  b.style.cssText = 'position:fixed;inset:0;background:rgba(4,3,12,0.72);z-index:10040;backdrop-filter:blur(3px);';
+  document.body.appendChild(b);
+  return b;
+}
+
+// ── STAGE 1 · Quick onboarding survey ──────────────────────────────────────
+function openQuickSurvey() {
+  if (!userProfile) return;
+  ensureProfileStyles();
+  closeGsModals();
+  gsBackdrop();
+
+  const pick = {
+    profession: userProfile.profession || null,
+    profession_level: userProfile.profession_level || null,
+  };
+
+  const modal = document.createElement('div');
+  modal.className = 'gs-modal';
+  modal.innerHTML = `
+    <h3>Welcome to gs-commie</h3>
+    <div class="sub">Two quick questions — this calibrates how your arguments are weighted.</div>
+
+    <label class="gs-label">1 · Your primary field</label>
+    <div class="gs-grid" data-group="profession">
+      ${PROFESSIONS.map(p => `<button class="gs-opt" data-val="${p.id}"><span>${p.icon}</span><span>${p.label}</span></button>`).join('')}
+    </div>
+
+    <label class="gs-label">2 · Your educational background in that field</label>
+    <div class="gs-grid" data-group="profession_level">
+      ${LEVELS.map(l => `<button class="gs-opt" data-val="${l.id}"><span>${l.label}</span></button>`).join('')}
+    </div>
+
+    <div class="gs-actions">
+      <button class="gs-btn ghost" id="gs-skip">Skip for now</button>
+      <button class="gs-btn primary" id="gs-save">Save &amp; Continue</button>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  modal.querySelectorAll('.gs-grid').forEach(grid => {
+    const group = grid.dataset.group;
+    grid.querySelectorAll('.gs-opt').forEach(btn => {
+      if (pick[group] === btn.dataset.val) btn.classList.add('sel');
+      btn.onclick = () => {
+        grid.querySelectorAll('.gs-opt').forEach(b => b.classList.remove('sel'));
+        btn.classList.add('sel');
+        pick[group] = btn.dataset.val;
+      };
+    });
+  });
+
+  modal.querySelector('#gs-skip').onclick = () => {
+    saveProfile({ survey_stage: 1 });
+    closeGsModals();
+  };
+  modal.querySelector('#gs-save').onclick = () => {
+    saveProfile({
+      profession: pick.profession,
+      profession_level: pick.profession_level || 'beginner',
+      survey_stage: 1,
+    });
+    logActivity('survey_quick', null, 1);
+    closeGsModals();
+  };
+}
+
+// ── STAGE 2 · Full profile ─────────────────────────────────────────────────
+function openProfileModal() {
+  if (!userProfile) { alert('Sign in to edit your profile.'); return; }
+  ensureProfileStyles();
+  closeGsModals();
+  gsBackdrop();
+
+  const p = userProfile;
+  const horizon = HORIZONS.find(h => h.id === p.horizon_type) || HORIZONS[1];
+  const lvl = LEVELS.find(l => l.id === p.profession_level) || LEVELS[0];
+  const comp = p.composite_level || 0;
+  const bar = v => `<div class="gs-meter"><i style="width:${Math.round(((v+1)/2)*100)}%"></i></div>`;
+
+  const modal = document.createElement('div');
+  modal.className = 'gs-modal';
+  modal.innerHTML = `
+    <h3>${p.display_name || 'Your Profile'}</h3>
+    <div class="sub">${horizon.icon} ${horizon.label} · ${lvl.label} · ${(p.activity_level || 'aktiv').replace('_',' ')}</div>
+
+    <label class="gs-label">Composite expertise level</label>
+    <div class="gs-row"><span>Education baseline</span><span>${(lvl.base*100).toFixed(0)}%</span></div>
+    <div class="gs-row"><span>Droplet likes</span><span>${p.droplet_likes_count || 0}</span></div>
+    <div class="gs-row"><span>Splitter likes</span><span>${p.splitter_likes_count || 0}</span></div>
+    <div class="gs-row"><span>Big Brain 🧠 received</span><span>${p.big_brain_count || 0}</span></div>
+    <div class="gs-row"><span><b>Composite level</b></span><span>${(comp*100).toFixed(0)}%</span></div>
+    <div style="font-size:9px;color:${comp >= BIG_BRAIN_THRESHOLD ? '#2ecc71' : 'rgba(255,255,255,0.35)'};margin-top:7px;">
+      ${comp >= BIG_BRAIN_THRESHOLD ? '🧠 Big Brain endorsement unlocked' : `🔒 Big Brain unlocks at ${(BIG_BRAIN_THRESHOLD*100).toFixed(0)}%`}
+    </div>
+
+    <label class="gs-label">Flyness breakdown</label>
+    <div class="gs-row"><span>Across expertises</span><span>${(p.flyness_expertise||0).toFixed(2)}</span></div>${bar(p.flyness_expertise||0)}
+    <div class="gs-row"><span>Across topic clusters</span><span>${(p.flyness_themen||0).toFixed(2)}</span></div>${bar(p.flyness_themen||0)}
+    <div class="gs-row"><span>Inside 2D mindmaps</span><span>${(p.flyness_2d||0).toFixed(2)}</span></div>${bar(p.flyness_2d||0)}
+    <div class="gs-row"><span>Post quantity vs depth</span><span>${(p.flyness_post||0).toFixed(2)}</span></div>${bar(p.flyness_post||0)}
+    <div class="gs-row"><span><b>Composite flyness</b></span><span>${(p.flyness_composite||0).toFixed(2)}</span></div>${bar(p.flyness_composite||0)}
+
+    <label class="gs-label">Field</label>
+    <div class="gs-grid" data-group="profession">
+      ${PROFESSIONS.map(x => `<button class="gs-opt${p.profession===x.id?' sel':''}" data-val="${x.id}"><span>${x.icon}</span><span>${x.label}</span></button>`).join('')}
+    </div>
+
+    <label class="gs-label">Educational background</label>
+    <div class="gs-grid" data-group="profession_level">
+      ${LEVELS.map(x => `<button class="gs-opt${p.profession_level===x.id?' sel':''}" data-val="${x.id}"><span>${x.label}</span></button>`).join('')}
+    </div>
+
+    <label class="gs-label">Degrees &amp; certifications (comma separated)</label>
+    <input class="gs-input" id="gs-degrees" value="${(p.degrees||[]).join(', ')}" placeholder="MSc Molecular Biology, ...">
+
+    <label class="gs-label">Age range</label>
+    <div class="gs-grid" data-group="age_range">
+      ${['<20','20-29','30-39','40-49','50-64','65+'].map(a => `<button class="gs-opt${p.age_range===a?' sel':''}" data-val="${a}"><span>${a}</span></button>`).join('')}
+    </div>
+
+    <label class="gs-label">Investment range (per year)</label>
+    <div class="gs-grid" data-group="investment_range">
+      ${['0','<500€','500-5k€','5k-50k€','50k€+'].map(a => `<button class="gs-opt${p.investment_range===a?' sel':''}" data-val="${a}"><span>${a}</span></button>`).join('')}
+    </div>
+
+    <label class="gs-label">Years of experience</label>
+    <input class="gs-input" id="gs-years" type="number" min="0" max="70" value="${p.experience_years||0}">
+
+    <label class="gs-label">Email notifications</label>
+    <div class="gs-grid" data-group="email_notify_punchies" style="grid-template-columns:1fr 1fr">
+      <button class="gs-opt${p.email_notify_punchies?' sel':''}" data-val="true"><span>✅ Notify me about punchies</span></button>
+      <button class="gs-opt${!p.email_notify_punchies?' sel':''}" data-val="false"><span>🔕 Off</span></button>
+    </div>
+
+    <div class="gs-actions">
+      <button class="gs-btn ghost" id="gs-close">Close</button>
+      <button class="gs-btn primary" id="gs-save2">Save Profile</button>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  const pick = {
+    profession: p.profession,
+    profession_level: p.profession_level,
+    age_range: p.age_range,
+    investment_range: p.investment_range,
+    email_notify_punchies: p.email_notify_punchies || false,
+  };
+
+  modal.querySelectorAll('.gs-grid').forEach(grid => {
+    const group = grid.dataset.group;
+    grid.querySelectorAll('.gs-opt').forEach(btn => {
+      btn.onclick = () => {
+        grid.querySelectorAll('.gs-opt').forEach(b => b.classList.remove('sel'));
+        btn.classList.add('sel');
+        pick[group] = btn.dataset.val;
+      };
+    });
+  });
+
+  modal.querySelector('#gs-close').onclick = closeGsModals;
+  modal.querySelector('#gs-save2').onclick = () => {
+    const degrees = modal.querySelector('#gs-degrees').value
+      .split(',').map(s => s.trim()).filter(Boolean);
+    const years = parseInt(modal.querySelector('#gs-years').value, 10) || 0;
+    saveProfile({
+      ...pick,
+      email_notify_punchies: pick.email_notify_punchies === true || pick.email_notify_punchies === 'true',
+      degrees,
+      experience_years: years,
+      survey_stage: 2,
+      survey_completed: true,
+    });
+    logActivity('survey_full', null, 1);
+    closeGsModals();
+  };
+}
+
+// ── Big Brain 🧠 endorsement (expert gated) ────────────────────────────────
+async function grantBigBrain(targetType, targetId, authorId) {
+  if (!currentUser) { alert('Sign in first.'); return false; }
+  if (!canGrantBigBrain()) {
+    alert(`🧠 Big Brain is reserved for verified experts.\nYour composite level: ${((userProfile?.composite_level||0)*100).toFixed(0)}% — required: ${(BIG_BRAIN_THRESHOLD*100).toFixed(0)}%.\n\nRaise it via credentials in your profile and likes on your droplets/splitters.`);
+    return false;
+  }
+  if (authorId === currentUser.id) { alert('You cannot endorse your own contribution.'); return false; }
+  try {
+    const { error } = await sbClient.from('mindmap_endorsements').insert({
+      from_user: currentUser.id,
+      to_user: authorId,
+      target_type: targetType,
+      target_id: String(targetId),
+      kind: 'big_brain',
+    });
+    if (error && error.code !== '23505') throw error;
+    logActivity('big_brain_given', targetId, 1);
+    return true;
+  } catch(e) { console.warn('Endorsement failed', e); return false; }
+}
+
+function bigBrainButtonHtml(targetType, targetId, authorId) {
+  const unlocked = canGrantBigBrain();
+  return `<button class="gs-bigbrain" data-type="${targetType}" data-id="${targetId}" data-author="${authorId||''}"
+    title="${unlocked ? 'Endorse as Big Brain' : 'Requires verified expert level'}"
+    style="background:none;border:none;cursor:${unlocked?'pointer':'not-allowed'};opacity:${unlocked?1:0.3};font-size:13px;padding:2px 4px;">🧠</button>`;
+}
+
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest?.('.gs-bigbrain');
+  if (!btn) return;
+  e.stopPropagation();
+  grantBigBrain(btn.dataset.type, btn.dataset.id, btn.dataset.author).then(ok => {
+    if (ok) { btn.style.filter = 'drop-shadow(0 0 6px #f1c40f)'; btn.disabled = true; }
+  });
+});
 
 // Sync votes from DB → merge with localStorage
 async function syncVotesFromDB() {
@@ -1979,6 +2579,7 @@ async function pushVoteToDB(nodeId, vote) {
       updated_at: new Date().toISOString()
     }, { onConflict: 'user_id,node_id' });
   } catch (e) { console.error('Vote push failed:', e); }
+  refreshOwnStats();
 }
 
 // Push community entry to DB
@@ -1995,6 +2596,7 @@ async function pushEntryToDB(entry) {
       files: entry.files || []
     });
   } catch (e) { console.error('Entry push failed:', e); }
+  refreshOwnStats();
 }
 
 // Init auth on page load
@@ -2158,6 +2760,8 @@ const TREE = [
       ]},
       { id:"mc_clone_neuro", label:"⚙️ MC: Neuro-Clone", color:"#f39c12", children:[] },
       { id:"mc_clone_cryo", label:"⚙️ MC: Cryo-Clone", color:"#f39c12", children:[] },
+      { id:"mc_lab_designer", label:"🧪 Lab Designer (IFC)", color:"#00d4ff", children:[] },
+      { id:"mc_diy_products", label:"📋 DIY Products", color:"#2ecc71", children:[] },
     ]
   },
 ];
@@ -2545,13 +3149,35 @@ function lerpColor(a, b, t) {
 // ── GRAPH ─────────────────────────────────────────────────────────────────────
 const CORE_IDS = new Set(['center','bp','na','ce','mc']);
 
+// ── DIY PRODUCT INJECTION ─────────────────────────────────────────────────────
+// Load DIY products from localStorage (shared with diy-products.html) and inject as nodes
+const DIY_STORAGE_KEY = 'diy_products';
+let diyProducts = [];
+try { diyProducts = JSON.parse(localStorage.getItem(DIY_STORAGE_KEY) || '[]'); } catch(e) { diyProducts = []; }
+
+const DIY_NODES = diyProducts.map(p => ({
+  id: 'diy_' + p.id,
+  label: '🔧 ' + p.name,
+  color: '#2ecc71',
+  depth: 3,
+  _diyProduct: p
+}));
+
+const DIY_EDGES = diyProducts.map(p => ({ s: 'mc_diy_products', t: 'diy_' + p.id, curve: 0.2 }));
+
 const gData = {
-  nodes: rawNodes.map(n => {
-    const grp = nodeGroup(n.id);
-    const color = grp ? GROUP_COLORS[grp] : n.color;
-    return { id: n.id, label: n.label, baseColor: color, val: sizeMap[n.depth] || 5 };
-  }),
-  links: rawEdges.map(e => ({ source: e.s, target: e.t, curve: e.curve || 0 }))
+  nodes: [
+    ...rawNodes.map(n => {
+      const grp = nodeGroup(n.id);
+      const color = grp ? GROUP_COLORS[grp] : n.color;
+      return { id: n.id, label: n.label, baseColor: color, val: sizeMap[n.depth] || 5 };
+    }),
+    ...DIY_NODES.map(n => ({ id: n.id, label: n.label, baseColor: n.color, val: 4, _diyProduct: n._diyProduct }))
+  ],
+  links: [
+    ...rawEdges.map(e => ({ source: e.s, target: e.t, curve: e.curve || 0 })),
+    ...DIY_EDGES.map(e => ({ source: e.s, target: e.t, curve: e.curve || 0 }))
+  ]
 };
 
 const MAP2D_REGISTRY = { 'na_ce_dbs': DBS_2D_DATA };
@@ -2563,6 +3189,7 @@ let secondaryIds = new Set();
 
 function setSelected(node) {
   selectedNode = node;
+  if (node && typeof logActivity === 'function') logActivity('node_select', node.id, 0);
   connectedIds = new Set();
   secondaryIds = new Set();
   if (node) {
@@ -2622,6 +3249,8 @@ function nodeColor(n) {
 }
 
 function linkColor(link) {
+  // Auto-crosslinks: cyan dashed
+  if (link.auto) return 'rgba(0,212,255,0.6)';
   const sid = typeof link.source === 'object' ? link.source.id : link.source;
   const tid = typeof link.target === 'object' ? link.target.id : link.target;
   if (selectedNode) {
@@ -2704,6 +3333,23 @@ try {
       startBloodlinePick();
       return;
     }
+    // Non-blood mode: right-click on node toggles watch mode
+    if (activeMode !== 'blood') {
+      if (activeMode === 'watch') {
+        // Exit watch mode
+        setMode('default');
+        setSelected(null);
+        if (Graph && Graph.cameraPosition) {
+          Graph.cameraPosition({ x: 0, y: 0, z: 600 }, { x: 0, y: 0, z: 0 }, 1200);
+        }
+      } else {
+        // Enter watch mode and add to watchlist
+        setSelected(node);
+        setMode('watch');
+        addToWatchlist(node.id);
+      }
+      return;
+    }
   })
   .onNodeHover(node => {
     if (node) {
@@ -2713,6 +3359,9 @@ try {
       const grp = nodeGroup(node.id);
       const grpLabels = {device:'🔵 Gerät',resource:'🟣 Special Resource',theory:'🔶 Theorie',problem:'🔴 Problemtheorie',mechanism:'🟢 Mechanismus',method:'⚪ Methode/Operation'};
       tooltip.querySelector('.t-status').textContent =
+        node.id === 'mc_lab_designer' ? '🧪 Click twice to open Lab Designer' :
+        node.id.startsWith('diy_') ? '🔧 DIY Product — click twice for details' :
+        node.id === 'mc_diy_products' ? '📋 Click twice to open DIY Product Registry' :
         MAP2D_REGISTRY[node.id] ? '🗺 2D-Map — click twice to open' :
         CORE_IDS.has(node.id) ? '● Core Node' :
         grp ? grpLabels[grp] :
@@ -2740,13 +3389,48 @@ try {
     } else {
       tooltip.style.display = 'none';
       if (bloodDropTarget) bloodDropTarget.classList.remove('visible');
+      hideBubbleHover();
     }
     document.body.style.cursor = node ? 'pointer' : 'default';
     // Refresh node color live in blood mode
     if (activeMode === 'blood') Graph.nodeColor(nodeColor);
+    // Watch mode bubble hover
+    if (activeMode === 'watch' && node && workfieldData) {
+      showBubbleHover(node);
+    } else {
+      hideBubbleHover();
+    }
   })
   .onNodeClick(node => {
+    // Axe mode: try to prune fake node
+    if (activeMode === 'axe') {
+      handleAxePrune(node);
+      return;
+    }
+    // Watch mode: click on node shows bubble detail (workfield)
+    if (activeMode === 'watch' && workfieldData) {
+      const watchers = getBubbleWatchers(node.id);
+      if (watchers.length > 0) {
+        showBubbleDetail(node);
+        return;
+      }
+    }
     if (selectedNode && selectedNode.id === node.id) {
+      // Lab Designer node → open lab-designer.html
+      if (node.id === 'mc_lab_designer') {
+        window.open('lab-designer.html', '_blank');
+        return;
+      }
+      // DIY Products node → open diy-products.html
+      if (node.id === 'mc_diy_products') {
+        window.open('diy-products.html', '_blank');
+        return;
+      }
+      // Individual DIY product node → show product info
+      if (node.id.startsWith('diy_') && node._diyProduct) {
+        showDiyProductPanel(node._diyProduct);
+        return;
+      }
       // second click: 2D-map for cross-zone nodes, wiki for others
       if (MAP2D_REGISTRY && MAP2D_REGISTRY[node.id]) {
         open2dMap(node.id);
@@ -2816,6 +3500,7 @@ const TYPE_LABELS = {
 function open2dMap(nodeId) {
   const data = MAP2D_REGISTRY[nodeId];
   if (!data) return;
+  if (typeof logActivity === 'function') logActivity('map2d_open', nodeId, 0);
 
   map2dTitle.textContent    = data.label;
   map2dSubtitle.textContent = 'Cross-Zone: Neural Augmentation ↔ Cognitive Enhancement';
@@ -2831,7 +3516,7 @@ function open2dMap(nodeId) {
   const sectionCount = data.sections.length;
   const totalNodes = data.sections.reduce((acc, s) => acc + (s.nodes?.length || 0), 0);
   // Large maps → open as own full page
-  const PAGE_MAP = { 'na_ce_dbs': 'map-dbs.html' };
+  const PAGE_MAP = { 'na_ce_dbs': 'map-dbs.html', 'mc_lab_designer': 'lab-designer.html' };
   if ((totalNodes > 20 || sectionCount > 4) && PAGE_MAP[nodeId]) {
     window.open(PAGE_MAP[nodeId], '_blank');
     return;
@@ -2953,7 +3638,7 @@ function open2dMap(nodeId) {
           <span style="color:rgba(255,255,255,0.6);cursor:pointer;" onclick="close2dMap();focusNode('${bl.source}')">${bl.sourceLabel}</span>
           <span style="color:#e74c3c;font-size:9px;">→</span>
           <span style="color:rgba(255,255,255,0.6);cursor:pointer;" onclick="close2dMap();focusNode('${bl.target}')">${bl.targetLabel}</span>
-          ${isOwn ? '<span style="margin-left:auto;font-size:8px;color:rgba(231,76,60,0.5);">yours</span>' : '<span style="margin-left:auto;font-size:8px;color:rgba(255,255,255,0.25);">community</span>'}
+          ${isOwn ? '<span style="margin-left:auto;font-size:8px;color:rgba(231,76,60,0.5);">yours</span>' : `<span style="margin-left:auto;font-size:8px;color:rgba(255,255,255,0.25);">community${bl.authorName ? ' · ' + bl.authorName : ''}</span>`}
         </div>
         ${bl.droplet ? `<div style="font-size:10px;color:rgba(255,255,255,0.5);line-height:1.4;padding-left:2px;">${bl.droplet}</div>` : ''}
       `;
@@ -3358,6 +4043,18 @@ function submitCommunityEntry() {
   entries.push(entry);
   localStorage.setItem('community-entries', JSON.stringify(entries));
 
+  // Depth score: sourced, described and file-backed entries count as deep contributions
+  if (typeof logActivity === 'function') {
+    const depth = Math.min(
+      (url ? 0.35 : 0) +
+      (files.length ? 0.25 : 0) +
+      Math.min((desc || '').length / 600, 1) * 0.4,
+      1
+    );
+    logActivity('entry', entry.nodeId, depth);
+    if (entry.nodeId) logActivity('map2d_entry', entry.nodeId, depth);
+  }
+
   // Auto-search for summary if this is a new node entry
   if (type === 'paper' || type === 'fact' || type === 'rnd') {
     searchAutoSummary(title, entry.nodeId).then(summary => {
@@ -3389,7 +4086,22 @@ function submitCommunityEntry() {
     })
   })
   .then(r => r.json())
-  .then(res => console.log('[RAG] Entry added:', res))
+  .then(res => {
+    console.log('[RAG] Entry added:', res);
+    // Hybrid query: MiniML pre-filter + llama3.2:3b LLM verification
+    if (entry.nodeId) {
+      fetch('http://192.168.2.136:8765/hybrid_query', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-API-Key': 'longevity-rag-key' },
+        body: JSON.stringify({ query: ragText, source_node: entry.nodeId, n_results: 10, threshold: 0.3 })
+      })
+      .then(qr => qr.json())
+      .then(qRes => {
+        handleHybridCrosslinks(qRes, entry);
+      })
+      .catch(err => console.warn('[RAG] Hybrid query failed:', err.message));
+    }
+  })
   .catch(err => console.warn('[RAG] Server not reachable:', err.message));
 
   // Push to Supabase DB
@@ -3476,6 +4188,9 @@ function finishBloodlinePick(targetNode) {
       userBloodlines.push(bl);
       saveBloodlines();
       pushBloodlineToDB(bl);
+      if (typeof logActivity === 'function') {
+        logActivity('droplet', dirA.id, Math.min((bl.droplet || '').length / 400, 1));
+      }
       renderBloodlineSidebar();
       applyBloodlineLinks();
       cancelBloodlinePick();
@@ -3665,6 +4380,22 @@ function removeBloodline(id) {
 
 // allBloodlines declared near userBloodlines above
 
+// ── DISPLAY NAME CACHE (shared by all comment systems) ──────────────────────
+const _nameCache = {};
+async function fetchDisplayNames(userIds) {
+  const missing = userIds.filter(id => id && !_nameCache[id]);
+  if (missing.length === 0) return;
+  try {
+    const { data } = await sbClient.from('mindmap_profiles')
+      .select('id, display_name, username')
+      .in('id', missing);
+    if (data) {
+      data.forEach(p => { _nameCache[p.id] = p.display_name || p.username || 'Unknown'; });
+    }
+  } catch(e) { console.warn('Name fetch failed:', e); }
+}
+function displayName(uid) { return _nameCache[uid] || 'Unknown'; }
+
 async function syncAllBloodlinesFromDB() {
   if (!sbClient) return;
   try {
@@ -3672,6 +4403,8 @@ async function syncAllBloodlinesFromDB() {
       .from('mindmap_bloodlines')
       .select('id,source_node,target_node,user_id,droplet_text')
       .neq('user_id', currentUser ? currentUser.id : '');
+    const userIds = [...new Set((data || []).map(d => d.user_id).filter(Boolean))];
+    await fetchDisplayNames(userIds);
     allBloodlines = (data || []).map(db => {
       const srcNode = gData.nodes.find(n => n.id === db.source_node);
       const tgtNode = gData.nodes.find(n => n.id === db.target_node);
@@ -3682,6 +4415,8 @@ async function syncAllBloodlinesFromDB() {
         sourceLabel: srcNode ? srcNode.label.replace(/[^\w\s()\-\/&]/g, '').trim() : db.source_node,
         targetLabel: tgtNode ? tgtNode.label.replace(/[^\w\s()\-\/&]/g, '').trim() : db.target_node,
         hasDroplet: !!db.droplet_text,
+        authorId: db.user_id,
+        authorName: displayName(db.user_id),
         _foreign: true
       };
     });
@@ -3757,7 +4492,9 @@ function renderBloodlineSidebar() {
         <span style="font-size:10px;color:rgba(255,255,255,${isRelated ? '0.75' : '0.45'});cursor:pointer;font-weight:${isRelated ? '600' : '400'};" onclick="focusNode('${bl.source}')">${bl.sourceLabel}</span>
         <span style="color:rgba(200,80,80,0.6);font-size:9px;flex-shrink:0;">→</span>
         <span style="font-size:10px;color:rgba(255,255,255,${isRelated ? '0.75' : '0.45'});cursor:pointer;font-weight:${isRelated ? '600' : '400'};" onclick="focusNode('${bl.target}')">${bl.targetLabel}</span>
+        ${bl.authorName ? `<span style="font-size:8px;color:rgba(255,255,255,0.3);margin-left:4px;">· ${bl.authorName}</span>` : ''}
         ${bl.hasDroplet ? `<span style="margin-left:auto;font-size:${isRelated ? '11' : '9'}px;opacity:${isRelated ? '0.8' : '0.4'};flex-shrink:0;" title="Has reason">🩸</span>` : ''}
+        ${bl.hasDroplet && bl._foreign && bl.authorId ? bigBrainButtonHtml('droplet', bl.id, bl.authorId) : ''}
       `;
       list.appendChild(item);
     });
@@ -3826,6 +4563,7 @@ async function pushBloodlineToDB(bl) {
       droplet_text: bl.droplet || null
     });
   } catch(e) { console.error('Bloodline push failed:', e); }
+  refreshOwnStats();
 }
 
 async function syncBloodlinesFromDB() {
@@ -4187,7 +4925,11 @@ function setMode(mode) {
     btnWatch.classList.add('active-watch');
     document.body.classList.add('mode-watch', 'watch-mode');
     spawnWatchScan(btnWatch);
+    if (currentUser) startWorkfield();
   }
+
+  // Stop workfield when leaving watch mode
+  if (next !== 'watch' && workfieldRefreshTimer) stopWorkfield();
 }
 
 document.getElementById('btn-sculptor').addEventListener('click', () => setMode('sculptor'));
@@ -4580,39 +5322,15 @@ setInterval(() => {
 
 document.getElementById('graph').addEventListener('mousedown', () => autoRotate = false);
 
-// Right-click to activate Watch mode or deselect and return to overview
-// NOTE: Blood mode uses right-click for bloodlines via Graph.onNodeRightClick
+// Right-click on empty space: fly back to overview (but keep watch mode active)
 document.getElementById('graph').addEventListener('contextmenu', (e) => {
   e.preventDefault(); // Prevent browser context menu
   e.stopPropagation();
-  console.log('Right-click detected, selectedNode:', selectedNode, 'activeMode:', activeMode);
-  
-  // Blood mode uses right-click for bloodlines - do NOT activate watch mode
-  if (activeMode === 'blood') {
-    console.log('Blood mode active - letting Graph.onNodeRightClick handle this');
-    return;
+  // Reset camera to overview position
+  if (Graph && Graph.cameraPosition) {
+    Graph.cameraPosition({ x: 0, y: 0, z: 600 }, { x: 0, y: 0, z: 0 }, 1200);
   }
-  
-  if (selectedNode && selectedNode.id) {
-    // Toggle Watch mode - but only if NOT in blood mode
-    if (activeMode === 'watch') {
-      // Exit Watch mode
-      setMode('default');
-      setSelected(null);
-      // Reset camera to overview position
-      if (Graph && Graph.cameraPosition) {
-        Graph.cameraPosition({ x: 0, y: 0, z: 600 }, { x: 0, y: 0, z: 0 }, 1200);
-      }
-      console.log('Watch mode deactivated');
-    } else if (activeMode !== 'blood') {
-      // Enter Watch mode (only if not in blood mode)
-      setMode('watch');
-      console.log('Watch mode activated for node:', selectedNode.label);
-    }
-  } else {
-    // No node selected - right-click does nothing or deselects
-    console.log('No node selected, right-click does nothing');
-  }
+  setSelected(null);
 });
 
 setTimeout(() => {
@@ -5011,6 +5729,1031 @@ function closeWikiPanel() {
 
 document.getElementById('wiki-close').onclick   = closeWikiPanel;
 document.getElementById('wiki-backdrop').ondblclick = closeWikiPanel;
+
+// ── DIY PRODUCT PANEL ─────────────────────────────────────────────────────────
+function showDiyProductPanel(p) {
+  wpTitle.textContent = p.name;
+  wpCat.textContent = 'DIY PRODUCT · ' + (p.category || 'uncategorized') + ' · ' + (p.status || 'pending');
+  const body = document.getElementById('wp-body');
+  const savings = (p.comCost || 0) - (p.diyCost || 0);
+  const savingsPct = p.comCost > 0 ? Math.round((savings / p.comCost) * 100) : 0;
+
+  let bomHtml = (p.bom || []).map(b =>
+    '<tr><td style="padding:4px 12px 4px 0;color:rgba(255,255,255,0.7)">' + b.part + '</td><td style="padding:4px 12px 4px 0;color:rgba(255,255,255,0.4);font-size:11px">' + (b.source || '') + '</td><td style="padding:4px 0;color:#2ecc71;text-align:right">$' + (b.cost || 0) + '</td></tr>'
+  ).join('');
+
+  let resHtml = (p.resources || []).map(r => {
+    const icons = { video: '▶', file: '📁', forum: '💬', web: '🌐', doc: '📄', image: '🖼' };
+    const colors = { video: '#ff6b6b', file: '#2ecc71', forum: '#00d4ff', web: '#bb8fce', doc: '#f1c40f', image: '#e67e22' };
+    return '<a href="' + r.url + '" target="_blank" style="display:inline-flex;align-items:center;gap:6px;padding:6px 14px;margin:4px 4px 4px 0;border-radius:8px;font-size:12px;text-decoration:none;background:rgba(255,255,255,0.04);border:1px solid ' + (colors[r.type] || '#666') + '33;color:' + (colors[r.type] || '#666') + '">' + (icons[r.type] || '🔗') + ' ' + r.label + '</a>';
+  }).join('');
+
+  body.innerHTML =
+    '<div style="margin-bottom:20px">' +
+      '<div style="display:flex;gap:24px;margin-bottom:16px">' +
+        '<div style="flex:1;padding:16px;background:rgba(46,204,113,0.06);border:1px solid rgba(46,204,113,0.2);border-radius:12px">' +
+          '<div style="font-size:10px;color:rgba(46,204,113,0.6);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">DIY Cost</div>' +
+          '<div style="font-size:24px;font-weight:700;color:#2ecc71">$' + (p.diyCost || 0).toLocaleString() + '</div>' +
+        '</div>' +
+        '<div style="flex:1;padding:16px;background:rgba(231,76,60,0.06);border:1px solid rgba(231,76,60,0.2);border-radius:12px">' +
+          '<div style="font-size:10px;color:rgba(231,76,60,0.6);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Commercial: ' + (p.comBrand || '') + '</div>' +
+          '<div style="font-size:24px;font-weight:700;color:#e74c3c">$' + (p.comCost || 0).toLocaleString() + '</div>' +
+        '</div>' +
+        '<div style="flex:1;padding:16px;background:rgba(241,196,15,0.06);border:1px solid rgba(241,196,15,0.2);border-radius:12px">' +
+          '<div style="font-size:10px;color:rgba(241,196,15,0.6);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Savings</div>' +
+          '<div style="font-size:24px;font-weight:700;color:#f1c40f">$' + savings.toLocaleString() + '</div>' +
+          '<div style="font-size:11px;color:rgba(241,196,15,0.5)">' + savingsPct + '% cheaper</div>' +
+        '</div>' +
+      '</div>' +
+      '<div style="display:inline-block;padding:4px 12px;border-radius:6px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;margin-bottom:16px;background:' +
+        (p.status === 'approved' ? 'rgba(46,204,113,0.15);color:#2ecc71' :
+         p.status === 'reviewed' ? 'rgba(0,212,255,0.15);color:#00d4ff' :
+         p.status === 'rejected' ? 'rgba(231,76,60,0.15);color:#e74c3c' :
+         'rgba(241,196,15,0.15);color:#f1c40f') +
+        '">' + (p.status || 'pending') + '</div>' +
+    '</div>' +
+    (resHtml ? '<div style="margin-bottom:20px"><div style="font-size:11px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Resources & Build Instructions</div>' + resHtml + '</div>' : '') +
+    (bomHtml ? '<div style="margin-bottom:20px"><div style="font-size:11px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Bill of Materials (' + (p.bom || []).length + ' parts)</div><table style="width:100%;font-size:13px;border-collapse:collapse">' + bomHtml + '</table></div>' : '') +
+    (p.comparisons && p.comparisons.length ? '<div style="margin-bottom:20px"><div style="font-size:11px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">⚖️ Commercial Comparisons</div>' + p.comparisons.map(c =>
+      '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:rgba(231,76,60,0.05);border-radius:8px;margin-bottom:6px;border:1px solid rgba(231,76,60,0.1);cursor:pointer;transition:background .15s" onmouseover="this.style.background=\'rgba(231,76,60,0.12)\'" onmouseout="this.style.background=\'rgba(231,76,60,0.05)\'" onclick="event.stopPropagation(); window.open(\'' + c.url + '\', \'_blank\');">' +
+        '<span style="font-size:12px;color:#e74c3c;font-weight:600;flex:1">' + c.brand + '</span>' +
+        '<span style="font-size:12px;color:rgba(255,255,255,0.5)">$' + (c.price||0).toLocaleString() + '</span>' +
+        '<a href="' + c.url + '" target="_blank" style="font-size:11px;color:#00d4ff;text-decoration:none" onclick="event.stopPropagation()">link</a>' +
+        (c.status === 'contested' ? '<span style="font-size:9px;padding:2px 6px;background:rgba(255,193,7,0.15);color:#ffc107;border-radius:4px;text-transform:uppercase">contested</span>' : '') +
+      '</div>'
+    ).join('') + '</div>' : '') +
+    '<div id="diy-punchies-container" style="margin-bottom:20px"><div style="font-size:11px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">🥊 Punchies</div><div id="diy-punchies-content" style="color:rgba(255,255,255,0.3);font-size:12px">Loading punchies...</div></div>' +
+    '<div style="display:flex;gap:10px;margin-top:20px">' +
+      '<button onclick="window.open(\'diy-products.html\',\'_blank\')" style="padding:10px 20px;background:rgba(46,204,113,0.1);border:1px solid rgba(46,204,113,0.3);border-radius:8px;color:#2ecc71;cursor:pointer;font-size:12px">Open in Registry</button>' +
+      '<button onclick="sessionStorage.setItem(\'lab-import\',JSON.stringify({id:\'' + p.id + '\',name:\'' + p.name.replace(/'/g, "\\'") + '\',glbData:' + (p.glbData ? 'true' : 'null') + '}));window.open(\'lab-designer.html?import=' + p.id + '\',\'_blank\')" style="padding:10px 20px;background:rgba(0,212,255,0.1);border:1px solid rgba(0,212,255,0.3);border-radius:8px;color:#00d4ff;cursor:pointer;font-size:12px">Send to Lab Designer</button>' +
+    '</div>';
+
+  wikiOverlay.classList.add('open');
+  document.body.classList.add('wiki-open');
+  loadDiyPanelPunchies(p.id);
+}
+
+async function loadDiyPanelPunchies(productId) {
+  const content = document.getElementById('diy-punchies-content');
+  if (!content) return;
+  if (!sbClient) { content.innerHTML = '<div style="color:rgba(255,255,255,0.2);font-size:11px">Punchies require sign-in</div>'; return; }
+  try {
+    const { data } = await sbClient.from('punchies')
+      .select('id, user_id, stance, content, vote_total, created_at')
+      .eq('target_type', 'product').eq('target_id', productId)
+      .order('vote_total', { ascending: false });
+    if (!data || !data.length) {
+      content.innerHTML = '<div style="color:rgba(255,255,255,0.2);font-size:11px">No punchies yet. Be the first!</div>';
+      return;
+    }
+    const uids = [...new Set(data.map(d => d.user_id).filter(Boolean))];
+    await fetchDisplayNames(uids);
+    let myVotes = {};
+    if (currentUser) {
+      const { data: votes } = await sbClient.from('punchie_votes')
+        .select('punchie_id, vote').eq('user_id', currentUser.id)
+        .in('punchie_id', data.map(d => d.id));
+      if (votes) votes.forEach(v => { myVotes[v.punchie_id] = v.vote; });
+    }
+    const pros = data.filter(p => p.stance === 'pro');
+    const cons = data.filter(p => p.stance === 'con');
+    const renderItem = (p) => {
+      const mv = myVotes[p.id] || 0;
+      return '<div style="padding:8px 10px;background:rgba(255,255,255,0.03);border-radius:8px;margin-bottom:6px;font-size:12px">' +
+        '<div style="font-size:10px;color:rgba(0,212,255,0.6);font-weight:600;margin-bottom:3px">' + displayName(p.user_id) + '</div>' +
+        '<div style="color:rgba(255,255,255,0.7);line-height:1.4;margin-bottom:4px">' + escapeWikiHtml(p.content) + '</div>' +
+        '<div style="display:flex;align-items:center;gap:8px;font-size:10px">' +
+          '<span style="cursor:pointer;padding:2px 6px;border-radius:4px;border:1px solid rgba(255,255,255,0.1);' + (mv > 0 ? 'border-color:rgba(46,204,113,0.5);background:rgba(46,204,113,0.1);color:#2ecc71' : '') + '" onclick="voteWikiPunchy(' + p.id + ',1,\'' + productId + '\')">👍</span>' +
+          '<span style="color:rgba(255,255,255,0.4);min-width:20px;text-align:center">' + (p.vote_total || 0) + '</span>' +
+          '<span style="cursor:pointer;padding:2px 6px;border-radius:4px;border:1px solid rgba(255,255,255,0.1);' + (mv < 0 ? 'border-color:rgba(231,76,60,0.5);background:rgba(231,76,60,0.1);color:#e74c3c' : '') + '" onclick="voteWikiPunchy(' + p.id + ',-1,\'' + productId + '\')">👎</span>' +
+        '</div></div>';
+    };
+    content.innerHTML =
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">' +
+        '<div style="background:rgba(46,204,113,0.04);border:1px solid rgba(46,204,113,0.15);border-radius:8px;padding:8px">' +
+          '<div style="font-size:9px;text-transform:uppercase;letter-spacing:1px;color:#2ecc71;margin-bottom:6px;font-weight:600">✅ Pros</div>' +
+          (pros.length ? pros.map(renderItem).join('') : '<div style="font-size:10px;color:rgba(255,255,255,0.2);padding:4px">No pros yet</div>') +
+        '</div>' +
+        '<div style="background:rgba(231,76,60,0.04);border:1px solid rgba(231,76,60,0.15);border-radius:8px;padding:8px">' +
+          '<div style="font-size:9px;text-transform:uppercase;letter-spacing:1px;color:#e74c3c;margin-bottom:6px;font-weight:600">❌ Cons</div>' +
+          (cons.length ? cons.map(renderItem).join('') : '<div style="font-size:10px;color:rgba(255,255,255,0.2);padding:4px">No cons yet</div>') +
+        '</div>' +
+      '</div>';
+  } catch(e) { content.innerHTML = '<div style="color:rgba(255,255,255,0.2);font-size:11px">Failed to load punchies</div>'; }
+}
+
+function escapeWikiHtml(str) { const d = document.createElement('div'); d.textContent = str; return d.innerHTML; }
+
+window.voteWikiPunchy = async function(punchieId, delta, productId) {
+  if (!currentUser || !sbClient) return;
+  try {
+    const { data: existing } = await sbClient.from('punchie_votes')
+      .select('vote').eq('punchie_id', punchieId).eq('user_id', currentUser.id).maybeSingle();
+    const current = existing?.vote || 0;
+    const next = Math.max(-2, Math.min(2, current + delta));
+    if (next === current) return;
+    await sbClient.from('punchie_votes').upsert({
+      punchie_id: punchieId, user_id: currentUser.id, vote: next
+    }, { onConflict: 'punchie_id,user_id' });
+    await loadDiyPanelPunchies(productId);
+  } catch(e) { console.warn('Wiki punchy vote failed:', e); }
+};
+
+// ── WATCHLIST DB SYNC ──────────────────────────────────────────────────────────
+function getLocalWatchlist() {
+  try { return JSON.parse(localStorage.getItem('watchedNodes') || '[]'); } catch { return []; }
+}
+
+async function syncWatchlistToDB() {
+  if (!sbClient || !currentUser || !userProfile) return;
+  const local = getLocalWatchlist();
+  if (local.length === 0 && (!userProfile.watchlist || userProfile.watchlist.length === 0)) return;
+  const dbList = userProfile.watchlist || [];
+  const merged = [...new Set([...dbList, ...local])];
+  if (JSON.stringify(merged.sort()) !== JSON.stringify(dbList.sort())) {
+    try {
+      await sbClient.from('mindmap_profiles').update({ watchlist: merged, updated_at: new Date().toISOString() }).eq('id', currentUser.id);
+      userProfile.watchlist = merged;
+    } catch(e) { console.warn('Watchlist sync failed', e); }
+  }
+}
+
+async function toggleWatchlistDB(nodeId, add) {
+  if (!sbClient || !currentUser || !userProfile) return;
+  let wl = userProfile.watchlist || [];
+  if (add) { wl = [...new Set([...wl, nodeId])]; }
+  else { wl = wl.filter(n => n !== nodeId); }
+  try {
+    await sbClient.from('mindmap_profiles').update({ watchlist: wl, updated_at: new Date().toISOString() }).eq('id', currentUser.id);
+    userProfile.watchlist = wl;
+  } catch(e) { console.warn('Watchlist toggle failed:', e); }
+}
+
+function addToWatchlist(nodeId) {
+  // Save to localStorage
+  const local = getLocalWatchlist();
+  if (!local.includes(nodeId)) {
+    local.push(nodeId);
+    localStorage.setItem('watchedNodes', JSON.stringify(local));
+  }
+  // Save to DB
+  if (sbClient && currentUser && userProfile) {
+    toggleWatchlistDB(nodeId, true);
+  }
+  refreshOwnStats();
+}
+
+// ── FAKE NODE LIST (pre-marked by admin) ───────────────────────────────────────
+const FAKE_NODES = {
+  bp_bacillus_f: {
+    label: 'Bacillus cereus Strain F (Permafrost)',
+    reason: 'Kälte-Überleben ≠ Longevity-Mechanismus. Permafrost-Bakterium überlebt Kälte, aber das hat nichts mit biologischer Langlebigkeit/Anti-Aging zu tun.',
+  },
+};
+
+const PRUNING_REWARD = 0.05;
+
+async function handleAxePrune(node) {
+  if (!node || !node.id) return false;
+  if (!FAKE_NODES[node.id]) return false;
+
+  const fakeInfo = FAKE_NODES[node.id];
+  const isFirstPrune = (userProfile?.pruning_count || 0) === 0;
+
+  // Update profile
+  const newCount = (userProfile?.pruning_count || 0) + 1;
+  const newReward = (userProfile?.pruning_reward_total || 0) + PRUNING_REWARD;
+  const newLevel = Math.min(1, (userProfile?.composite_level || 0) + PRUNING_REWARD);
+
+  await saveProfile({
+    pruning_count: newCount,
+    pruning_reward_total: newReward,
+    composite_level: newLevel,
+  });
+
+  // Remove node from graph
+  const idx = gData.nodes.findIndex(n => n.id === node.id);
+  if (idx >= 0) {
+    gData.nodes.splice(idx, 1);
+    gData.links = gData.links.filter(l => l.source !== node && l.target !== node);
+    Graph.graphData(gData);
+  }
+
+  if (isFirstPrune) {
+    showPruningModal(fakeInfo, PRUNING_REWARD);
+  } else {
+    showPruningToast(fakeInfo.label, PRUNING_REWARD);
+  }
+
+  return true;
+}
+
+function showPruningModal(fakeInfo, reward) {
+  const modal = document.createElement('div');
+  modal.className = 'gs-modal';
+  modal.style.cssText += 'text-align:center;';
+  modal.innerHTML = `
+    <div style="font-size:48px;margin-bottom:12px;">🪓✅</div>
+    <h3 style="font-size:18px;color:#27ae60;">Fake-Kugel erkannt!</h3>
+    <div style="margin:16px 0;color:rgba(255,255,255,0.7);font-size:13px;line-height:1.6;">
+      Du hast erfolgreich eine Fake-Kugel identifiziert und entfernt:<br>
+      <b style="color:#e74c3c;">🦠 ${fakeInfo.label}</b><br><br>
+      <span style="color:rgba(255,255,255,0.5);font-size:11px;">${fakeInfo.reason}</span>
+    </div>
+    <div style="background:rgba(39,174,96,0.15);border:1px solid rgba(39,174,96,0.4);border-radius:10px;padding:14px;margin:16px 0;">
+      <span style="font-size:20px;font-weight:700;color:#27ae60;">+${(reward * 100).toFixed(0)}%</span>
+      <span style="color:rgba(255,255,255,0.6);font-size:12px;margin-left:8px;">Composite Level</span>
+    </div>
+    <button class="gs-btn primary" id="prune-close" style="width:100%;padding:12px;">Weiter geht's</button>
+  `;
+  document.body.appendChild(modal);
+  modal.querySelector('#prune-close').onclick = () => modal.remove();
+}
+
+function showPruningToast(label, reward) {
+  const toast = document.createElement('div');
+  toast.style.cssText = `
+    position:fixed; bottom:24px; right:24px;
+    background:rgba(12,10,26,0.95); border:1px solid rgba(39,174,96,0.4);
+    border-radius:10px; padding:14px 20px; z-index:10060;
+    color:#fff; font-size:12px; box-shadow:0 8px 30px rgba(0,0,0,0.6);
+    backdrop-filter:blur(10px); animation:gsModalIn .2s ease;
+    display:flex; align-items:center; gap:10px;
+  `;
+  toast.innerHTML = `
+    <span style="font-size:20px;">🪓</span>
+    <span>Fake-Kugel entfernt: <b style="color:#e74c3c;">${label}</b><br><span style="color:#27ae60;">+${(reward * 100).toFixed(0)}% Level</span></span>
+  `;
+  document.body.appendChild(toast);
+  setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = 'opacity 0.4s'; setTimeout(() => toast.remove(), 400); }, 4000);
+}
+
+// ── WORKFIELD WATCH MODE ───────────────────────────────────────────────────────
+let workfieldData = null;
+let workfieldRefreshTimer = null;
+
+async function loadWorkfieldData() {
+  if (!sbClient) return null;
+  try {
+    const { data: profiles } = await sbClient.from('mindmap_profiles')
+      .select('id, display_name, username, profession, profession_level, horizon_type, activity_level, composite_level, flyness_composite, watchlist, big_brain_count, pruning_count')
+      .not('display_name', 'is', null);
+
+    const { data: bloodlines } = await sbClient.from('mindmap_bloodlines')
+      .select('id, user_id, source_node, target_node, comment, created_at');
+
+    const { data: droplets } = await sbClient.from('mindmap_droplets')
+      .select('id, bloodline_id, user_id, content, created_at');
+
+    const { data: entries } = await sbClient.from('mindmap_entries')
+      .select('id, user_id, node_id, entry_type, title, created_at');
+
+    workfieldData = { profiles: profiles || [], bloodlines: bloodlines || [], droplets: droplets || [], entries: entries || [] };
+    return workfieldData;
+  } catch(e) { console.warn('Workfield load failed', e); return null; }
+}
+
+function getBubbleWatchers(nodeId) {
+  if (!workfieldData?.profiles) return [];
+  return workfieldData.profiles.filter(p => (p.watchlist || []).includes(nodeId));
+}
+
+function getProfessionIcon(profId) {
+  const p = PROFESSIONS.find(x => x.id === profId);
+  return p ? p.icon : '🌐';
+}
+
+function getProfessionLabel(profId) {
+  const p = PROFESSIONS.find(x => x.id === profId);
+  return p ? p.label : 'Other';
+}
+
+function getHorizonIcon(horizon) {
+  if (horizon === 'flyer') return '🕊️';
+  if (horizon === 'diver') return '🤿';
+  return '🏄';
+}
+
+function getActivityColor(activity) {
+  if (activity === 'viel_aktiv') return '#27ae60';
+  if (activity === 'aktiv') return '#f1c40f';
+  if (activity === 'wenig_aktiv') return '#e67e22';
+  return '#7f8c8d';
+}
+
+function renderWorkfieldPanel() {
+  let panel = document.getElementById('workfield-panel');
+  if (panel) panel.remove();
+
+  if (!workfieldData || !workfieldData.profiles.length) return;
+
+  panel = document.createElement('div');
+  panel.id = 'workfield-panel';
+  panel.style.cssText = `
+    position:fixed; top:60px; right:16px; width:320px; max-height:80vh;
+    overflow-y:auto; background:rgba(12,10,26,0.95); border:1px solid rgba(0,212,255,0.3);
+    border-radius:14px; padding:18px; z-index:9000; color:#fff; font-size:12px;
+    box-shadow:0 12px 40px rgba(0,0,0,0.7); backdrop-filter:blur(12px);
+  `;
+
+  // Legend / Summary
+  const profCounts = {};
+  const levelCounts = {};
+  const horizonCounts = { diver: 0, surfer: 0, flyer: 0 };
+  workfieldData.profiles.forEach(p => {
+    profCounts[p.profession || 'other'] = (profCounts[p.profession || 'other'] || 0) + 1;
+    levelCounts[p.profession_level || 'beginner'] = (levelCounts[p.profession_level || 'beginner'] || 0) + 1;
+    if (p.horizon_type) horizonCounts[p.horizon_type] = (horizonCounts[p.horizon_type] || 0) + 1;
+  });
+
+  let legendHtml = '<div style="margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid rgba(255,255,255,0.1);">';
+  legendHtml += '<div style="font-size:10px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Community</div>';
+  legendHtml += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;">';
+  Object.entries(horizonCounts).forEach(([h, c]) => {
+    if (c > 0) legendHtml += `<span style="background:rgba(255,255,255,0.08);padding:3px 8px;border-radius:6px;font-size:10px;">${getHorizonIcon(h)} ${c}</span>`;
+  });
+  legendHtml += '</div><div style="display:flex;gap:6px;flex-wrap:wrap;">';
+  Object.entries(profCounts).forEach(([pid, c]) => {
+    legendHtml += `<span style="background:rgba(255,255,255,0.08);padding:3px 8px;border-radius:6px;font-size:10px;">${getProfessionIcon(pid)} ${c}</span>`;
+  });
+  legendHtml += '</div></div>';
+
+  // User list
+  let usersHtml = `<div style="font-size:10px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Users (${workfieldData.profiles.length})</div>`;
+  workfieldData.profiles.forEach(p => {
+    const level = Math.round((p.composite_level || 0) * 100);
+    const wlCount = (p.watchlist || []).length;
+    const blCount = workfieldData.bloodlines.filter(b => b.user_id === p.id).length;
+    usersHtml += `
+      <div class="wf-user" data-uid="${p.id}" style="padding:10px;margin-bottom:6px;background:rgba(255,255,255,0.04);border-radius:8px;cursor:pointer;transition:background 0.2s;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:16px;">${getProfessionIcon(p.profession)}</span>
+          <span style="font-weight:600;flex:1;">${p.display_name || p.username || 'Unknown'}</span>
+          <span style="font-size:14px;">${getHorizonIcon(p.horizon_type)}</span>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:6px;font-size:10px;color:rgba(255,255,255,0.5);">
+          <span>Lvl ${level}%</span>
+          <span style="color:${getActivityColor(p.activity_level)};">● ${p.activity_level || 'inaktiv'}</span>
+          <span>👁 ${wlCount}</span>
+          <span>🩸 ${blCount}</span>
+        </div>
+      </div>
+    `;
+  });
+
+  panel.innerHTML = legendHtml + usersHtml;
+  document.body.appendChild(panel);
+
+  // User click → detail view
+  panel.querySelectorAll('.wf-user').forEach(el => {
+    el.onclick = () => {
+      const uid = el.dataset.uid;
+      showUserDetail(uid);
+    };
+    el.onmouseenter = () => { el.style.background = 'rgba(255,255,255,0.08)'; };
+    el.onmouseleave = () => { el.style.background = 'rgba(255,255,255,0.04)'; };
+  });
+}
+
+function showUserDetail(uid) {
+  const p = workfieldData.profiles.find(x => x.id === uid);
+  if (!p) return;
+
+  const userBloodlines = workfieldData.bloodlines.filter(b => b.user_id === uid);
+  const userDroplets = workfieldData.droplets.filter(d => d.user_id === uid);
+  const userEntries = workfieldData.entries.filter(e => e.user_id === uid);
+  const wl = p.watchlist || [];
+  const level = Math.round((p.composite_level || 0) * 100);
+
+  const modal = document.createElement('div');
+  modal.className = 'gs-modal';
+  modal.innerHTML = `
+    <h3>${getProfessionIcon(p.profession)} ${p.display_name || p.username || 'Unknown'}</h3>
+    <div style="display:flex;gap:12px;margin:12px 0;flex-wrap:wrap;">
+      <span style="background:rgba(255,255,255,0.08);padding:4px 10px;border-radius:6px;">${getHorizonIcon(p.horizon_type)} ${p.horizon_type || 'surfer'}</span>
+      <span style="background:rgba(255,255,255,0.08);padding:4px 10px;border-radius:6px;">Lvl ${level}%</span>
+      <span style="background:rgba(255,255,255,0.08);padding:4px 10px;border-radius:6px;color:${getActivityColor(p.activity_level)};">● ${p.activity_level || 'inaktiv'}</span>
+      <span style="background:rgba(255,255,255,0.08);padding:4px 10px;border-radius:6px;">${getProfessionLabel(p.profession)}</span>
+      ${p.pruning_count > 0 ? `<span style="background:rgba(39,174,96,0.15);padding:4px 10px;border-radius:6px;color:#27ae60;">🪓 ${p.pruning_count}</span>` : ''}
+      ${p.big_brain_count > 0 ? `<span style="background:rgba(241,196,15,0.15);padding:4px 10px;border-radius:6px;color:#f1c40f;">🧠 ${p.big_brain_count}</span>` : ''}
+    </div>
+
+    <div style="margin-top:16px;">
+      <div style="font-size:10px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Watchlist (${wl.length})</div>
+      ${wl.length ? wl.map(nid => {
+        const n = gData.nodes.find(x => x.id === nid);
+        return `<div style="padding:6px 10px;background:rgba(0,212,255,0.06);border-radius:6px;margin-bottom:4px;font-size:11px;">👁 ${n ? n.label : nid}</div>`;
+      }).join('') : '<div style="color:rgba(255,255,255,0.3);font-size:11px;">No watched nodes</div>'}
+    </div>
+
+    <div style="margin-top:16px;">
+      <div style="font-size:10px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Bloodlines (${userBloodlines.length})</div>
+      ${userBloodlines.length ? userBloodlines.map(b => {
+        const sn = gData.nodes.find(x => x.id === b.source_node);
+        const tn = gData.nodes.find(x => x.id === b.target_node);
+        return `<div style="padding:6px 10px;background:rgba(231,76,60,0.06);border-radius:6px;margin-bottom:4px;font-size:11px;">🩸 ${sn?.label || b.source_node} → ${tn?.label || b.target_node}${b.comment ? '<br><span style="color:rgba(255,255,255,0.4);">' + b.comment.substring(0,80) + '</span>' : ''}</div>`;
+      }).join('') : '<div style="color:rgba(255,255,255,0.3);font-size:11px;">No bloodlines</div>'}
+    </div>
+
+    <div style="margin-top:16px;">
+      <div style="font-size:10px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Community Entries (${userEntries.length})</div>
+      ${userEntries.length ? userEntries.map(e => `<div style="padding:6px 10px;background:rgba(255,255,255,0.04);border-radius:6px;margin-bottom:4px;font-size:11px;">📝 ${e.title || e.entry_type}</div>`).join('') : '<div style="color:rgba(255,255,255,0.3);font-size:11px;">No entries</div>'}
+    </div>
+
+    <div class="gs-actions" style="margin-top:18px;">
+      <button class="gs-btn primary" id="wf-detail-close" style="width:100%;">Close</button>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  modal.querySelector('#wf-detail-close').onclick = () => modal.remove();
+}
+
+// Bubble hover/click for watch mode
+let bubbleTooltip = null;
+
+function showBubbleHover(node) {
+  if (!workfieldData) return;
+  const watchers = getBubbleWatchers(node.id);
+  if (watchers.length === 0) return;
+
+  // Count professions
+  const profCounts = {};
+  watchers.forEach(w => { profCounts[w.profession || 'other'] = (profCounts[w.profession || 'other'] || 0) + 1; });
+  const topProf = Object.entries(profCounts).sort((a,b) => b[1] - a[1])[0];
+
+  if (bubbleTooltip) bubbleTooltip.remove();
+  bubbleTooltip = document.createElement('div');
+  bubbleTooltip.style.cssText = `
+    position:fixed; background:rgba(12,10,26,0.95); border:1px solid rgba(0,212,255,0.3);
+    border-radius:8px; padding:8px 14px; z-index:9100; color:#fff; font-size:11px;
+    pointer-events:none; box-shadow:0 6px 20px rgba(0,0,0,0.5); backdrop-filter:blur(8px);
+  `;
+  bubbleTooltip.innerHTML = `👁 <b>${watchers.length}</b> watcher${watchers.length > 1 ? 's' : ''} · Top: ${getProfessionIcon(topProf[0])} ${getProfessionLabel(topProf[0])}`;
+
+  const rect = graphWrap.getBoundingClientRect();
+  const camera = Graph.camera ? Graph.camera() : Graph._camera;
+  if (camera) {
+    const v = new THREE.Vector3(node.x, node.y, node.z);
+    v.project(camera);
+    const x = (v.x * 0.5 + 0.5) * rect.width + rect.left;
+    const y = (-v.y * 0.5 + 0.5) * rect.height + rect.top;
+    bubbleTooltip.style.left = (x + 20) + 'px';
+    bubbleTooltip.style.top = (y - 30) + 'px';
+  }
+  document.body.appendChild(bubbleTooltip);
+}
+
+function hideBubbleHover() {
+  if (bubbleTooltip) { bubbleTooltip.remove(); bubbleTooltip = null; }
+}
+
+function showBubbleDetail(node) {
+  if (!workfieldData) return;
+  const watchers = getBubbleWatchers(node.id);
+  if (watchers.length === 0) return;
+
+  // Aggregate stats
+  const totalLevel = watchers.reduce((s, w) => s + (w.composite_level || 0), 0);
+  const profCounts = {};
+  const horizonCounts = { diver: 0, surfer: 0, flyer: 0 };
+  let activeCount = 0;
+  watchers.forEach(w => {
+    profCounts[w.profession || 'other'] = (profCounts[w.profession || 'other'] || 0) + 1;
+    if (w.horizon_type) horizonCounts[w.horizon_type]++;
+    if (w.activity_level === 'viel_aktiv' || w.activity_level === 'aktiv') activeCount++;
+  });
+
+  // Check for recent activity on this node
+  const nodeBloodlines = workfieldData.bloodlines.filter(b => b.source_node === node.id || b.target_node === node.id);
+  const nodeEntries = workfieldData.entries.filter(e => e.node_id === node.id);
+  const recentActivity = [...nodeBloodlines, ...nodeEntries].filter(x => {
+    const age = Date.now() - new Date(x.created_at).getTime();
+    return age < 7 * 24 * 60 * 60 * 1000; // last 7 days
+  }).length;
+
+  const modal = document.createElement('div');
+  modal.className = 'gs-modal';
+  modal.innerHTML = `
+    <h3>👁 ${node.label}</h3>
+    <div style="color:rgba(255,255,255,0.5);font-size:11px;margin-bottom:14px;">Bubble Workfield Overview</div>
+
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;">
+      <div style="background:rgba(0,212,255,0.1);padding:8px 14px;border-radius:8px;text-align:center;">
+        <div style="font-size:20px;font-weight:700;color:#00d4ff;">${watchers.length}</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.4);">Watchers</div>
+      </div>
+      <div style="background:rgba(241,196,15,0.1);padding:8px 14px;border-radius:8px;text-align:center;">
+        <div style="font-size:20px;font-weight:700;color:#f1c40f;">${Math.round(totalLevel * 100)}%</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.4);">Σ Level</div>
+      </div>
+      <div style="background:rgba(39,174,96,0.1);padding:8px 14px;border-radius:8px;text-align:center;">
+        <div style="font-size:20px;font-weight:700;color:#27ae60;">${activeCount}</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.4);">Active</div>
+      </div>
+      ${recentActivity > 0 ? `<div style="background:rgba(231,76,60,0.1);padding:8px 14px;border-radius:8px;text-align:center;"><div style="font-size:20px;font-weight:700;color:#e74c3c;">${recentActivity}</div><div style="font-size:10px;color:rgba(255,255,255,0.4);">Recent (7d)</div></div>` : ''}
+    </div>
+
+    <div style="margin-bottom:14px;">
+      <div style="font-size:10px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Horizon Distribution</div>
+      <div style="display:flex;gap:8px;">
+        <span style="background:rgba(255,255,255,0.08);padding:4px 10px;border-radius:6px;">🤿 ${horizonCounts.diver}</span>
+        <span style="background:rgba(255,255,255,0.08);padding:4px 10px;border-radius:6px;">🏄 ${horizonCounts.surfer}</span>
+        <span style="background:rgba(255,255,255,0.08);padding:4px 10px;border-radius:6px;">🕊️ ${horizonCounts.flyer}</span>
+      </div>
+    </div>
+
+    <div style="margin-bottom:14px;">
+      <div style="font-size:10px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Professions</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        ${Object.entries(profCounts).map(([pid, c]) => `<span style="background:rgba(255,255,255,0.08);padding:4px 10px;border-radius:6px;font-size:11px;">${getProfessionIcon(pid)} ${getProfessionLabel(pid)}: ${c}</span>`).join('')}
+      </div>
+    </div>
+
+    <div style="margin-bottom:14px;">
+      <div style="font-size:10px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Watchers</div>
+      ${watchers.map(w => `
+        <div class="wf-user" data-uid="${w.id}" style="padding:8px 10px;background:rgba(255,255,255,0.04);border-radius:6px;margin-bottom:4px;cursor:pointer;display:flex;align-items:center;gap:8px;">
+          <span>${getProfessionIcon(w.profession)}</span>
+          <span style="flex:1;font-weight:600;">${w.display_name || w.username || 'Unknown'}</span>
+          <span>${getHorizonIcon(w.horizon_type)}</span>
+          <span style="font-size:10px;color:rgba(255,255,255,0.5);">Lvl ${Math.round((w.composite_level||0)*100)}%</span>
+        </div>
+      `).join('')}
+    </div>
+
+    <div class="gs-actions">
+      <button class="gs-btn primary" id="bubble-close" style="width:100%;">Close</button>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  modal.querySelector('#bubble-close').onclick = () => modal.remove();
+  modal.querySelectorAll('.wf-user').forEach(el => {
+    el.onclick = () => { modal.remove(); showUserDetail(el.dataset.uid); };
+  });
+}
+
+// Start/stop workfield refresh
+function startWorkfield() {
+  loadWorkfieldData().then(() => renderWorkfieldPanel());
+  workfieldRefreshTimer = setInterval(() => {
+    loadWorkfieldData().then(() => renderWorkfieldPanel());
+  }, 120000); // 2 min background refresh (instant updates via refreshOwnStats)
+}
+
+function refreshOwnStats() {
+  if (!workfieldData || !currentUser) return;
+  // Update own profile in workfieldData from userProfile
+  const own = workfieldData.profiles.find(p => p.id === currentUser.id);
+  if (own && userProfile) {
+    own.display_name = userProfile.display_name;
+    own.profession = userProfile.profession;
+    own.profession_level = userProfile.profession_level;
+    own.composite_level = userProfile.composite_level;
+    own.horizon_type = userProfile.horizon_type;
+    own.activity_level = userProfile.activity_level;
+    own.big_brain_count = userProfile.big_brain_count;
+    own.pruning_count = userProfile.pruning_count;
+    own.watchlist = userProfile.watchlist || getLocalWatchlist();
+  }
+  // Update own bloodlines count
+  if (allBloodlines) {
+    workfieldData.bloodlines = workfieldData.bloodlines.filter(b => b.user_id !== currentUser.id);
+    workfieldData.bloodlines.push(...allBloodlines.filter(b => b.user_id === currentUser.id));
+  }
+  // Update own entries count
+  if (typeof communityEntries !== 'undefined') {
+    workfieldData.entries = workfieldData.entries.filter(e => e.user_id !== currentUser.id);
+    if (communityEntries) {
+      workfieldData.entries.push(...communityEntries.filter(e => e.user_id === currentUser.id));
+    }
+  }
+  if (activeMode === 'watch') renderWorkfieldPanel();
+}
+
+function stopWorkfield() {
+  if (workfieldRefreshTimer) { clearInterval(workfieldRefreshTimer); workfieldRefreshTimer = null; }
+  const panel = document.getElementById('workfield-panel');
+  if (panel) panel.remove();
+  hideBubbleHover();
+}
+
+// ── AUTO-CROSSLINK ENGINE (RAG-powered) ───────────────────────────────────────
+const SIMILARITY_THRESHOLD = 0.75;
+let autoCrosslinks = [];
+
+async function handleHybridCrosslinks(qRes, entry) {
+  if (!qRes || !qRes.results || !entry.nodeId) return;
+  
+  const matches = qRes.results || [];
+  const autoAccepted = [];
+  const needsVoting = [];
+  const newArms = [];
+  
+  const is2DNode = !gData.nodes.find(n => n.id === entry.nodeId);
+  
+  for (const match of matches) {
+    const matchNodeId = match.match_node || match.metadata?.nodeId;
+    if (!matchNodeId || matchNodeId === entry.nodeId) continue;
+    
+    const hybridScore = match.hybrid_score || 0;
+    const llmReason = match.llm_reason || '';
+    const llmRelated = match.llm_related || false;
+    
+    if (!llmRelated && hybridScore < 0.5) continue;
+    
+    // Check if both nodes exist
+    const target3D = gData.nodes.find(n => n.id === matchNodeId);
+    
+    // Case 1: 2D node → 3D arm
+    if (is2DNode && target3D) {
+      const { data: existing } = await sbClient.from('mindmap_auto_crosslinks')
+        .select('id').eq('source_node', entry.nodeId).eq('target_node', matchNodeId).limit(1);
+      if (existing && existing.length > 0) continue;
+      
+      const armData = {
+        source_2d: entry.nodeId, target_3d: matchNodeId,
+        hybrid_score: hybridScore, llm_reason: llmReason,
+        match_title: match.metadata?.title || match.text?.substring(0, 60) || '',
+        match_type: match.metadata?.type || '',
+      };
+      
+      if (hybridScore >= 0.9) {
+        // Auto-accept arm
+        await saveAndConfirmCrosslink(entry.nodeId, matchNodeId, 'arm3d', hybridScore, llmReason);
+        newArms.push({...armData, auto: true});
+      } else if (hybridScore >= 0.6) {
+        // Needs voting
+        await savePendingCrosslink(entry.nodeId, matchNodeId, 'arm3d', hybridScore, llmReason);
+        newArms.push({...armData, auto: false});
+      }
+      continue;
+    }
+    
+    // Case 2: 3D ↔ 3D crosslink
+    const srcNode = gData.nodes.find(n => n.id === entry.nodeId);
+    if (!srcNode || !target3D) continue;
+    
+    const exists = gData.links.some(l => 
+      (l.source.id === entry.nodeId && l.target.id === matchNodeId) ||
+      (l.source.id === matchNodeId && l.target.id === entry.nodeId)
+    );
+    if (exists) continue;
+    
+    const { data: existing } = await sbClient.from('mindmap_auto_crosslinks')
+      .select('id').or(`source_node.eq.${entry.nodeId},target_node.eq.${matchNodeId}`).limit(1);
+    if (existing && existing.length > 0) continue;
+    
+    const linkData = {
+      source_node: entry.nodeId, target_node: matchNodeId,
+      hybrid_score: hybridScore, llm_reason: llmReason,
+      match_title: match.metadata?.title || match.text?.substring(0, 60) || '',
+      match_type: match.metadata?.type || '',
+    };
+    
+    if (hybridScore >= 0.9) {
+      // Auto-accept: connect immediately
+      await saveAndConfirmCrosslink(entry.nodeId, matchNodeId, '3d', hybridScore, llmReason);
+      autoAccepted.push(linkData);
+    } else if (hybridScore >= 0.6) {
+      // Needs community voting
+      await savePendingCrosslink(entry.nodeId, matchNodeId, '3d', hybridScore, llmReason);
+      needsVoting.push(linkData);
+    }
+  }
+  
+  // Show auto-accepted connections as toast
+  if (autoAccepted.length > 0) {
+    showAutoAcceptToast(autoAccepted, entry);
+  }
+  
+  // Show voting modal for 60-90% matches
+  if (needsVoting.length > 0) {
+    showVotingModal(needsVoting, entry);
+  }
+  
+  // Show auto-accepted arms as toast
+  if (newArms.length > 0) {
+    showAutoAcceptToast(newArms.map(a => ({...a, is_arm: true})), entry);
+  }
+  
+  // Notify users who have either node on their watchlist
+  if (needsVoting.length > 0 || autoAccepted.length > 0) {
+    notifyWatchlistUsers([...autoAccepted, ...needsVoting], entry);
+  }
+}
+
+async function saveAndConfirmCrosslink(sourceNode, targetNode, linkType, score, reason) {
+  try {
+    await sbClient.from('mindmap_auto_crosslinks').insert({
+      source_node: sourceNode, target_node: targetNode,
+      similarity_score: score, confirmed: true, link_type: linkType,
+      llm_reason: reason,
+    });
+  } catch(e) { console.warn('Crosslink save failed:', e); }
+  
+  if (linkType === 'arm3d') {
+    injectArm3d(sourceNode, targetNode);
+  } else {
+    gData.links.push({ source: sourceNode, target: targetNode, curve: 0.5, auto: true });
+    Graph.graphData(gData);
+  }
+  autoCrosslinks.push({ source: sourceNode, target: targetNode, confirmed: true, type: linkType });
+}
+
+async function savePendingCrosslink(sourceNode, targetNode, linkType, score, reason) {
+  try {
+    await sbClient.from('mindmap_auto_crosslinks').insert({
+      source_node: sourceNode, target_node: targetNode,
+      similarity_score: score, confirmed: false, link_type: linkType,
+      llm_reason: reason, votes_yes: 0, votes_no: 0,
+    });
+  } catch(e) { console.warn('Pending crosslink save failed:', e); }
+}
+
+function injectArm3d(source2D, target3D) {
+  for (const mapId in MAP2D_REGISTRY) {
+    const mapData = MAP2D_REGISTRY[mapId];
+    if (mapData.sections) {
+      for (const sec of mapData.sections) {
+        if (sec.nodes) {
+          const node = sec.nodes.find(n => n.id === source2D);
+          if (node && !node.arm3d) {
+            node.arm3d = target3D;
+            if (map2dOverlay.classList.contains('open')) {
+              const panel = document.getElementById('map2d-panel');
+              const rect = panel.getBoundingClientRect();
+              updateArmLines(mapData, {x: rect.left + rect.width/2, y: rect.top + rect.height/2}, mapId);
+            }
+            return;
+          }
+        }
+      }
+    }
+  }
+  if (DBS_2D_DATA.sections) {
+    for (const sec of DBS_2D_DATA.sections) {
+      if (sec.nodes) {
+        const node = sec.nodes.find(n => n.id === source2D);
+        if (node && !node.arm3d) node.arm3d = target3D;
+      }
+    }
+  }
+}
+
+function showAutoAcceptToast(links, entry) {
+  const toast = document.createElement('div');
+  toast.style.cssText = 'position:fixed;top:20px;right:20px;background:rgba(46,204,113,0.95);color:#fff;padding:14px 18px;border-radius:10px;font-size:12px;z-index:10001;box-shadow:0 8px 24px rgba(0,0,0,0.4);max-width:380px;animation:slideIn 0.3s ease;';
+  
+  let html = '<div style="font-weight:600;margin-bottom:6px;">🔗 Auto-Verbindung erstellt</div>';
+  links.forEach(l => {
+    const src = l.is_arm ? l.source_2d : l.source_node;
+    const srcLabel = gData.nodes.find(n => n.id === src)?.label || src;
+    const tgtLabel = gData.nodes.find(n => n.id === l.target_node)?.label || l.target_node;
+    html += `<div style="margin:4px 0;font-size:11px;opacity:0.9;">${srcLabel} ${l.is_arm ? '→' : '↔'} ${tgtLabel} (${(l.hybrid_score * 100).toFixed(0)}%)</div>`;
+  });
+  toast.innerHTML = html;
+  document.body.appendChild(toast);
+  setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = 'opacity 0.5s'; setTimeout(() => toast.remove(), 500); }, 5000);
+}
+
+function showVotingModal(links, entry) {
+  const modal = document.createElement('div');
+  modal.className = 'gs-modal';
+  modal.style.cssText += 'text-align:center;';
+  
+  let linksHtml = links.map(l => {
+    const srcLabel = gData.nodes.find(n => n.id === l.source_node)?.label || l.source_node;
+    const tgtLabel = gData.nodes.find(n => n.id === l.target_node)?.label || l.target_node;
+    return `
+      <div style="padding:14px;margin:10px 0;background:rgba(241,196,15,0.06);border:1px solid rgba(241,196,15,0.2);border-radius:10px;">
+        <div style="display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:6px;">
+          <span style="font-size:12px;color:#fff;font-weight:600;">${srcLabel}</span>
+          <span style="font-size:18px;color:#f1c40f;">↔</span>
+          <span style="font-size:12px;color:#fff;font-weight:600;">${tgtLabel}</span>
+        </div>
+        <div style="font-size:10px;color:rgba(241,196,15,0.7);margin-bottom:4px;">Hybrid Score: ${(l.hybrid_score * 100).toFixed(0)}%</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.5);margin-bottom:8px;font-style:italic;">"${l.llm_reason}"</div>
+        <div style="display:flex;gap:8px;justify-content:center;">
+          <button class="gs-btn primary" data-vote="yes|${l.source_node}|${l.target_node}" style="padding:6px 16px;font-size:11px;">👍 Verbinden</button>
+          <button class="gs-btn" data-vote="no|${l.source_node}|${l.target_node}" style="padding:6px 16px;font-size:11px;background:transparent;border:1px solid rgba(255,255,255,0.2);">👎 Nein</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+  
+  modal.innerHTML = `
+    <div style="font-size:36px;margin-bottom:8px;">🤔</div>
+    <h3 style="font-size:16px;color:#f1c40f;">Verbindung vorschlagen?</h3>
+    <div style="margin:10px 0;color:rgba(255,255,255,0.6);font-size:12px;">
+      Die AI hat mögliche Verbindungen gefunden. Stimme ab — bei genug Bestätigungen wird die Verbindung gezogen.
+    </div>
+    ${linksHtml}
+    <button class="gs-btn" id="voting-close" style="width:100%;margin-top:10px;padding:10px;">Später</button>
+  `;
+  document.body.appendChild(modal);
+  
+  modal.querySelector('#voting-close').onclick = () => modal.remove();
+  
+  modal.querySelectorAll('[data-vote]').forEach(btn => {
+    btn.onclick = async () => {
+      const [vote, src, tgt] = btn.dataset.vote.split('|');
+      await castCrosslinkVote(src, tgt, vote === 'yes');
+      btn.parentElement.parentElement.style.opacity = '0.4';
+      btn.parentElement.innerHTML = `<span style="color:${vote === 'yes' ? '#27ae60' : 'rgba(255,255,255,0.3)'};font-size:11px;">${vote === 'yes' ? '✓ Abgestimmt' : '✗ Abgestimmt'}</span>`;
+    };
+  });
+}
+
+async function castCrosslinkVote(sourceNode, targetNode, isYes) {
+  try {
+    // Fetch current votes
+    const { data } = await sbClient.from('mindmap_auto_crosslinks')
+      .select('id, votes_yes, votes_no')
+      .eq('source_node', sourceNode)
+      .eq('target_node', targetNode)
+      .limit(1);
+    
+    if (!data || data.length === 0) return;
+    
+    const cl = data[0];
+    const yes = (cl.votes_yes || 0) + (isYes ? 1 : 0);
+    const no = (cl.votes_no || 0) + (isYes ? 0 : 1);
+    
+    await sbClient.from('mindmap_auto_crosslinks')
+      .update({ votes_yes: yes, votes_no: no })
+      .eq('id', cl.id);
+    
+    // Auto-confirm if 3 yes votes and yes > no
+    if (yes >= 3 && yes > no) {
+      await sbClient.from('mindmap_auto_crosslinks')
+        .update({ confirmed: true })
+        .eq('id', cl.id);
+      
+      // Get link_type
+      const { data: full } = await sbClient.from('mindmap_auto_crosslinks')
+        .select('link_type').eq('id', cl.id).limit(1);
+      const linkType = full?.[0]?.link_type || '3d';
+      
+      if (linkType === 'arm3d') {
+        injectArm3d(sourceNode, targetNode);
+      } else {
+        gData.links.push({ source: sourceNode, target: targetNode, curve: 0.5, auto: true });
+        Graph.graphData(gData);
+      }
+      autoCrosslinks.push({ source: sourceNode, target: targetNode, confirmed: true, type: linkType });
+    }
+  } catch(e) { console.warn('Vote failed:', e); }
+}
+
+async function notifyWatchlistUsers(links, entry) {
+  // Find users who have entry.nodeId or any target node on their watchlist
+  try {
+    const targetNodes = links.map(l => l.target_node || l.target_3d);
+    const allNodes = [entry.nodeId, ...targetNodes];
+    
+    const { data: profiles } = await sbClient.from('mindmap_profiles')
+      .select('id, display_name, watchlist')
+      .not('id', 'eq', currentUser?.id || '00000000-0000-0000-0000-000000000000');
+    
+    if (!profiles) return;
+    
+    for (const p of profiles) {
+      const wl = p.watchlist || [];
+      const hasMatch = allNodes.some(n => wl.includes(n));
+      if (hasMatch) {
+        // Create notification in DB
+        await sbClient.from('mindmap_notifications').insert({
+          user_id: p.id,
+          type: 'crosslink_proposal',
+          message: `Neue Verbindung vorgeschlagen für ${gData.nodes.find(n => n.id === entry.nodeId)?.label || entry.nodeId}`,
+          data: { links, entry_node: entry.nodeId },
+        }).then().catch(() => {}); // notifications table might not exist yet
+      }
+    }
+  } catch(e) { console.warn('Watchlist notification failed:', e); }
+}
+
+async function loadAutoCrosslinks() {
+  if (!sbClient) return;
+  try {
+    const { data } = await sbClient.from('mindmap_auto_crosslinks')
+      .select('*')
+      .eq('confirmed', true);
+    
+    if (!data) return;
+    
+    for (const cl of data) {
+      const linkType = cl.link_type || '3d';
+      
+      if (linkType === 'arm3d') {
+        // Restore arm3d into 2D-Map data
+        for (const mapId in MAP2D_REGISTRY) {
+          const mapData = MAP2D_REGISTRY[mapId];
+          if (mapData.sections) {
+            for (const sec of mapData.sections) {
+              if (sec.nodes) {
+                const node = sec.nodes.find(n => n.id === cl.source_node);
+                if (node && !node.arm3d) {
+                  node.arm3d = cl.target_node;
+                  autoCrosslinks.push({ source: cl.source_node, target: cl.target_node, confirmed: true, type: 'arm3d' });
+                }
+              }
+            }
+          }
+        }
+        // Also check DBS_2D_DATA
+        if (DBS_2D_DATA.sections) {
+          for (const sec of DBS_2D_DATA.sections) {
+            if (sec.nodes) {
+              const node = sec.nodes.find(n => n.id === cl.source_node);
+              if (node && !node.arm3d) {
+                node.arm3d = cl.target_node;
+                autoCrosslinks.push({ source: cl.source_node, target: cl.target_node, confirmed: true, type: 'arm3d' });
+              }
+            }
+          }
+        }
+      } else {
+        // 3D crosslink
+        const exists = gData.links.some(l =>
+          (l.source.id === cl.source_node && l.target.id === cl.target_node) ||
+          (l.source.id === cl.target_node && l.target.id === cl.source_node)
+        );
+        if (!exists) {
+          gData.links.push({ source: cl.source_node, target: cl.target_node, curve: 0.5, auto: true });
+          autoCrosslinks.push({ source: cl.source_node, target: cl.target_node, confirmed: true, type: '3d' });
+        }
+      }
+    }
+    
+    // Refresh graph if any 3D crosslinks were added
+    const has3DLinks = autoCrosslinks.some(l => l.type === '3d');
+    if (has3DLinks) {
+      Graph.graphData(gData);
+    }
+  } catch(e) { console.warn('Auto-crosslink load failed:', e); }
+}
+
+async function loadNotifications() {
+  if (!sbClient || !currentUser) return;
+  try {
+    const { data } = await sbClient.from('mindmap_notifications')
+      .select('*')
+      .eq('user_id', currentUser.id)
+      .eq('read', false)
+      .order('created_at', { ascending: false })
+      .limit(10);
+    
+    if (!data || data.length === 0) return;
+    
+    // Show notification badge
+    showNotificationBadge(data);
+  } catch(e) { console.warn('Notifications load failed:', e); }
+}
+
+function showNotificationBadge(notifications) {
+  const existing = document.getElementById('notif-badge');
+  if (existing) existing.remove();
+  
+  const badge = document.createElement('div');
+  badge.id = 'notif-badge';
+  badge.style.cssText = 'position:fixed;top:60px;right:20px;background:rgba(241,196,15,0.95);color:#000;padding:8px 14px;border-radius:20px;font-size:11px;font-weight:600;z-index:10001;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,0.3);display:flex;align-items:center;gap:6px;';
+  badge.innerHTML = `<span style="font-size:14px;">🔔</span> ${notifications.length} new notification${notifications.length > 1 ? 's' : ''}`;
+  badge.onclick = () => {
+    showNotificationPanel(notifications);
+    badge.remove();
+  };
+  document.body.appendChild(badge);
+}
+
+function showNotificationPanel(notifications) {
+  const modal = document.createElement('div');
+  modal.className = 'gs-modal';
+  modal.style.cssText += 'text-align:left;max-width:450px;';
+  
+  let html = '<h3 style="font-size:14px;color:#f1c40f;margin-bottom:12px;">🔔 Benachrichtigungen</h3>';
+  notifications.forEach(n => {
+    html += `
+      <div style="padding:12px;margin:8px 0;background:rgba(241,196,15,0.06);border:1px solid rgba(241,196,15,0.15);border-radius:8px;">
+        <div style="font-size:12px;color:#fff;margin-bottom:4px;">${n.message}</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.4);">${new Date(n.created_at).toLocaleString('de-DE')}</div>
+      </div>
+    `;
+  });
+  html += '<button class="gs-btn" id="notif-close" style="width:100%;margin-top:10px;padding:10px;">Schließen</button>';
+  modal.innerHTML = html;
+  document.body.appendChild(modal);
+  
+  modal.querySelector('#notif-close').onclick = async () => {
+    // Mark as read
+    try {
+      await sbClient.from('mindmap_notifications')
+        .update({ read: true })
+        .eq('user_id', currentUser.id);
+    } catch(e) {}
+    modal.remove();
+  };
+}
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
 // Sidebar builds independently of 3D graph

@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>gs-commie — Instructions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0820;
+    --bg-card: rgba(255,255,255,0.03);
+    --gold: #f1c40f;
+    --gold-dim: rgba(241,196,15,0.4);
+    --red: #e74c3c;
+    --green: #27ae60;
+    --text: rgba(255,255,255,0.85);
+    --text-dim: rgba(255,255,255,0.45);
+    --border: rgba(255,255,255,0.08);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    line-height: 1.7;
+    min-height: 100vh;
+  }
+
+  /* ── HEADER ──────────────────────────── */
+  .page-header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 32px;
+    background: rgba(10,8,32,0.95);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+  }
+  .page-header .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--gold);
+    letter-spacing: 1px;
+  }
+  .page-header .brand-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--gold);
+    box-shadow: 0 0 12px var(--gold-dim);
+  }
+  .back-btn {
+    color: var(--text-dim);
+    text-decoration: none;
+    font-size: 12px;
+    padding: 7px 14px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    transition: all 0.2s;
+  }
+  .back-btn:hover {
+    color: var(--gold);
+    border-color: var(--gold-dim);
+    background: rgba(241,196,15,0.06);
+  }
+
+  /* ── HERO ────────────────────────────── */
+  .hero {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 60px 32px 40px;
+    text-align: center;
+  }
+  .hero h1 {
+    font-size: 32px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 14px;
+    letter-spacing: -0.5px;
+  }
+  .hero h1 .accent { color: var(--gold); }
+  .hero .tagline {
+    font-size: 14px;
+    color: var(--text-dim);
+    max-width: 600px;
+    margin: 0 auto;
+  }
+  .hero .golden-line {
+    width: 120px;
+    height: 2px;
+    margin: 28px auto 0;
+    background: linear-gradient(90deg, transparent, var(--gold), transparent);
+    border-radius: 99px;
+  }
+
+  /* ── SECTIONS ────────────────────────── */
+  .sections {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 20px 32px 80px;
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+  }
+  .section-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 28px 32px;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.6s ease, transform 0.6s ease;
+  }
+  .section-card.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .section-card .section-num {
+    font-size: 10px;
+    color: var(--gold-dim);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 8px;
+  }
+  .section-card h2 {
+    font-size: 20px;
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 14px;
+  }
+  .section-card p {
+    font-size: 14px;
+    color: var(--text);
+    margin-bottom: 12px;
+  }
+  .section-card p:last-child { margin-bottom: 0; }
+  .section-card strong {
+    color: var(--gold);
+    font-weight: 600;
+  }
+
+  /* ── CONTENT TYPE GRID ───────────────── */
+  .type-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 10px;
+    margin-top: 16px;
+  }
+  .type-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-size: 12px;
+  }
+  .type-icon {
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+  .type-label {
+    color: var(--text);
+    font-weight: 500;
+  }
+  .type-desc {
+    color: var(--text-dim);
+    font-size: 10px;
+    display: block;
+    margin-top: 2px;
+  }
+
+  /* ── MODE CARDS ──────────────────────── */
+  .mode-row {
+    display: flex;
+    gap: 14px;
+    margin-top: 16px;
+    flex-wrap: wrap;
+  }
+  .mode-card {
+    flex: 1;
+    min-width: 220px;
+    padding: 16px 18px;
+    background: rgba(255,255,255,0.02);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+  }
+  .mode-card .mode-icon {
+    font-size: 22px;
+    margin-bottom: 8px;
+  }
+  .mode-card h3 {
+    font-size: 13px;
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 6px;
+  }
+  .mode-card p {
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.5;
+  }
+
+  /* ── DE ──────────────────────────────── */
+  .de-toggle {
+    max-width: 900px;
+    margin: 0 auto 80px;
+    padding: 0 32px;
+  }
+  .de-toggle button {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .de-toggle button:hover {
+    color: var(--gold);
+    border-color: var(--gold-dim);
+  }
+  .de-content {
+    display: none;
+    margin-top: 16px;
+    padding: 24px 28px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    font-size: 13px;
+    color: var(--text-dim);
+    line-height: 1.8;
+    white-space: pre-wrap;
+  }
+  .de-content.open { display: block; }
+
+  /* ── FOOTER ──────────────────────────── */
+  .page-footer {
+    text-align: center;
+    padding: 24px 32px 40px;
+    font-size: 11px;
+    color: var(--text-dim);
+    border-top: 1px solid var(--border);
+  }
+  .page-footer a {
+    color: var(--gold);
+    text-decoration: none;
+  }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <div class="brand">
+    <span class="brand-dot"></span>
+    gs-commie
+  </div>
+  <a href="index.html" class="back-btn">← Back to 3D Map</a>
+</div>
+
+<div class="hero">
+  <h1>The <span class="accent">Volksbank Principle</span> for Knowledge</h1>
+  <p class="tagline">A project-based 3D mindmap knowledge graph where arguments become data, money flows follow plans, and the community curates the frontier.</p>
+  <div class="golden-line"></div>
+</div>
+
+<div class="sections">
+
+  <!-- 1. THE PROBLEM -->
+  <div class="section-card" data-reveal>
+    <div class="section-num">01 — The Problem</div>
+    <h2>Who hasn't been there?</h2>
+    <p>You wake up and suddenly realize everyone around you has been replaced by cheap vibe-coded AI that selectively ignores the most important topics, overrides logical planning, and suspends rational prioritization. You just want to improve your own body. But while every industry is technologically booming, the operative, evidence-based stem cell research, failed studies, master plans, "the real state of the art," and the willingness to share or exhaust organizational potential all remain behind closed doors.</p>
+    <p><strong>One of the first trivial innovations:</strong> We also write down studies that didn't conclude much or any positive results — but followed a designated path that seemed reasonable.</p>
+  </div>
+
+  <!-- 2. THE VOLKSBANK PRINCIPLE -->
+  <div class="section-card" data-reveal>
+    <div class="section-num">02 — The Volksbank Principle</div>
+    <h2>gs-commie</h2>
+    <p>This is the new goal-driven Volksbank principle: <strong>gs-commie</strong>. It explains money flow and planning as a cohesive overall project, makes interdisciplinary deliberation fully transparent, democratizes it, and ensures clarity.</p>
+    <p>At the center stands what truly matters: the three main goals — <strong>life extension primarily through genetic engineering, mental autonomy, and cognitive enhancement</strong>. From these, a project-based 3D mindmap knowledge graph is woven.</p>
+  </div>
+
+  <!-- 3. BLOODLINES & DROPLETS -->
+  <div class="section-card" data-reveal>
+    <div class="section-num">03 — Bloodlines & Droplets</div>
+    <h2>Arguments as Data Objects</h2>
+    <p>Within this graph, users can draw their own directed connections (<strong>Bloodlines</strong>) between two knowledge nodes — and each connection can carry a free-text <strong>Droplet</strong> as a justification. In this mode, the user vouches for the quality of one project over another, turning the argumentation itself into a queryable data object instead of letting it disappear in a comment field.</p>
+    <p>The evaluation system then becomes a tool for user statistics and describes to what extent it would make sense to let money flow, should the connection be part of the <strong>golden main line</strong>.</p>
+    <p>Foreign Bloodlines from other users are not listed flatly, but sorted by relevance to the currently focused node and dimmed/highlighted accordingly — the graph thus shows context-dependently which foreign lines of thought are relevant right now.</p>
+    <p>Submitted Droplets are evaluated and pre-selected through discussions and a like/dislike system before they become visible to all users. <strong>Who evaluates and pre-selects is determined by the Watchlist Horizon</strong>, which is set thematically via the Watch Mode.</p>
+  </div>
+
+  <!-- 4. 2D MINDMAP PER NODE -->
+  <div class="section-card" data-reveal>
+    <div class="section-num">04 — 2D Mindmap per Node</div>
+    <h2>Cost Balancing & Knowledge Gaps</h2>
+    <p>Each project knowledge node contains its own 2D mindmap representation or listing directory. The goal is cost balancing of all relevant contents and variants of project implementation, as well as the clear crystallization of knowledge gaps.</p>
+    <div class="type-grid">
+      <div class="type-item">
+        <span class="type-icon">🔧</span>
+        <div><span class="type-label">DIY (Self-Build)</span><span class="type-desc">Build it yourself</span></div>
+      </div>
+      <div class="type-item">
+        <span class="type-icon">🛒</span>
+        <div><span class="type-label">Buy (Purchase)</span><span class="type-desc">Supplier, vendor</span></div>
+      </div>
+      <div class="type-item">
+        <span class="type-icon">📚</span>
+        <div><span class="type-label">Fact (Established)</span><span class="type-desc">Verified, proven</span></div>
+      </div>
+      <div class="type-item">
+        <span class="type-icon">🔬</span>
+        <div><span class="type-label">R&D (Theory)</span><span class="type-desc">Hypothesis, unproven</span></div>
+      </div>
+      <div class="type-item">
+        <span class="type-icon">📄</span>
+        <div><span class="type-label">Research Paper</span><span class="type-desc">Scientific publication</span></div>
+      </div>
+      <div class="type-item">
+        <span class="type-icon">📊</span>
+        <div><span class="type-label">Dataset</span><span class="type-desc">Raw data, measurements</span></div>
+      </div>
+      <div class="type-item">
+        <span class="type-icon">🎥</span>
+        <div><span class="type-label">Video</span><span class="type-desc">Audiovisual material</span></div>
+      </div>
+      <div class="type-item">
+        <span class="type-icon">🔗</span>
+        <div><span class="type-label">Link / Resource</span><span class="type-desc">External, uncategorized</span></div>
+      </div>
+    </div>
+    <p style="margin-top:14px;">Another important component is the cross-referencing of arms from the 2D map to contents of the 3D map, should there be overlaps regarding equipment, sub-forums, or related laboratory forms.</p>
+  </div>
+
+  <!-- 5. WATCH MODE -->
+  <div class="section-card" data-reveal>
+    <div class="section-num">05 — Watch Mode</div>
+    <h2>Your Modified View on the 3D Main Map</h2>
+    <p>The Watch Mode is largely self-selected and covers either specific thematic areas or an entire project knowledge node. While self-chosen expertise mainly determines the areas within the project itself, the Watch Mode determines which news reports you receive — via newsletter email as well as your own subpage within gs-commie — upon updates in your field. It also controls which Droplet evaluations and Bloodline notifications you see, at what relevance threshold, and so on.</p>
+    <p>It is, however, only one way of modifying the view on the 3D main map.</p>
+  </div>
+
+  <!-- 6. SCULPTOR & AXE MODE -->
+  <div class="section-card" data-reveal>
+    <div class="section-num">06 — Sculptor Mode & Axe Mode</div>
+    <h2>Reshaping the Graph</h2>
+    <p>The <strong>Sculptor Mode</strong> (Bildhauer) lets you redesign the assignment of project references. Even if a form of automated embedding implementation should emerge, it is primarily <strong>Community Embedding</strong> that determines the order and goal-finding of projects — which should also enable laboratory sharing. The Sculptor Mode modifies exclusively for yourself.</p>
+    <p>The <strong>Axe Mode</strong> (Axt) is where modification becomes public. Through so-called <strong>Splitter</strong> — justifications for cutting a connection between two projects or adding one — you can make changes visible to the entire community. Own projects can also be entered here. Should similar entries be found among people in Sculptor Mode, an automatic jump to Axe Mode could be triggered.</p>
+    <p>Here too, there should be pre-checks before changes are passed on to an ever-higher horizon of the community.</p>
+    <div class="mode-row">
+      <div class="mode-card">
+        <div class="mode-icon">🗿</div>
+        <h3>Sculptor Mode (Bildhauer)</h3>
+        <p>Redesign project references for yourself. Community embedding determines order and goals. Enables laboratory sharing.</p>
+      </div>
+      <div class="mode-card">
+        <div class="mode-icon">🪓</div>
+        <h3>Axe Mode (Axt)</h3>
+        <p>Cut or add connections with Splitter justifications. Changes become visible to the community. Pre-checked before reaching higher horizons.</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- GERMAN ORIGINAL TOGGLE -->
+<div class="de-toggle">
+  <button onclick="const c = document.getElementById('de-original'); c.classList.toggle('open'); this.textContent = c.classList.contains('open') ? 'Hide German original ↑' : 'Show German original ↓'">Show German original ↓</button>
+  <div class="de-content" id="de-original">Wer kennt das nicht?
+Man wacht auf und realisiert auf einmal alle Menschen wurden mit billiger vibe-coded AI ausgetauscht die selektiv Sachen, wie die wichtigsten Themengebieten einfach ignoriert und logische Planung und Einteilung außer Kraft setzt. Man möchte einfach nur seinen Körper verbessern. Aber während jede Branche technologisch boomt, bleibt die operative, beweisreiche Stammzellforschung, verfehlte Studien, Masterpläne als auch „the real State of the Art" und die Austauschbereichtschaft oder die Ausschöpfung von Organisationspotential hinter verschlossenen Türen. Eine der ersten wichtigen trivialen Innovationen: Wir schreiben auch die falschen Studien auf!
+
+Dazu präsentiere das neue zielstrebige Volksbank Prinzip: gs-commie! Welcher Geldfluss und Planung zu einem eingängigen Gesamtprojekt erklärt und interdisziplinarisches Abwägen in voller Deutlichkeit aufzeigt, sowie demokratisiert und Übersichtlichkeit sichert.
+
+In der Mitte steht, was wirklich wichtig ist, hauptsächlich die 3 Hauptziele der Lebensverlängerung hauptsächlich durch Gentechnik, geistiger Autonomie, sowie die kognitive Verbesserung zu erreichen. Hieraus wird ein Projekte-basierter 3D-Mindmap Wissensgraph gewoben. In diesem können Nutzer eigene gerichtete Verbindungen („Bloodlines") zwischen zwei Wissensknoten ziehen — und jede Verbindung kann einen Freitext-„Droplet" als Begründung tragen. Der Nutzer bürgt in diesem Modus mit der Qualität eines Projektes über ein anderes und damit wird die Argumentation selbst zum abfragbaren Datenobjekt, statt im Kommentarfeld zu verschwinden. Das Bewertungssystem wird dann zum Mittel für die Nutzerstatistik und beschreibt, dann auch zusätzlich inwiefern es wohl Sinn machen sollte Geld fließen zu lassen, sollte es Teil der goldenen Hauptlinie sein. Fremde Bloodlines anderer Nutzer werden nicht flach aufgelistet, sondern nach Relevanz zum aktuell fokussierten Knoten sortiert und gedimmt/hervorgehoben — der Graph zeigt also kontextabhängig, welche fremden Denkwege hier gerade relevant sind. Die eingetragenen Droplets werden mit Diskussionen und einem Like/dislike-System bewertet und vorselektiert. Ehe es für alle Nutzer sichtbar wird. Wer bewertet und vorselektiert entscheidet der Watchlist-Horizon. Dieser wird thematisch über den Watch-Modus festgelegt.
+
+Jeder Projekt-Wissensknoten enthält selbst nochmal eine eigene 2D Mindmap Darstellung oder ein Listungsverzeichnis. Ziel ist die Kostenbilanzierung aller relevanten Inhalte und Varianten der Projektumsetzung. Sowie das klare Rauskristallisieren von Wissenslücken. Hierzu gehören: DIY (Self-Build) vs. Buy (Purchase) — Bezugsquelle, Lieferant, Fact (Established) — gesicherter, belegter Sachverhalt, R&D (Theory) Hypothese, offene Forschungsfrage, unbewiesen, Research Paper und Datasets, mögliche Rahmenbedingungen zur Environment oder Verwandtschaft der Laborformen. Videos, andere Links, externe Ressource ohne engere Einordnung. Ein anderer wichtiger Bestandteil ist der Verweis von Ärmchen der 2D-Map auf Inhalte der 3D-Map, sollte es Überschneidungen geben bzgl. Gerätschaften, Subforen.
+
+Der Watchmodus wird weitgehend selbst gewählt und umfasst entweder bestimmte thematische Bereich oder ein ganzen Projekt-Wissensknoten selbst. Während selbstgewählte Expertise hauptsächlich, die Bereiche im Projekt selbst bestimmt. Der Watchmodus legt fest, welche News-Reports man z.b. über Newsletter-Email als auch eigene Subpage in gs-commie selbst bei Erneuerungen in einem Feld. Welche Dropletbewertungen/Bloodlines-Notifications man mit welcher Relevanz sieht usw.
+
+Er ist jedoch nur ein Weg des modifizierten Blickes auf die 3D-Hauptmap. Der Bildhauer Modus lässt einen die Zuordnung der Projektbezüge neugestalten. Auch wenn eine Form des automatisierten Embedding Implementierung finden sollte. Ist es doch Hauptsächlich Community-Embedding, welche Reihenfolge und Zielfindung der Projekte festlegt. Welches Labor-Sharing auch hauptsächlich mitermöglichen soll. Der Bildhauermodus modifiziert ausschließlich für einen selbst bist man im Axtmodus durch sogenannte Splitter (Begründungen für einen Verbindungsschnitt zwischen 2 Projekten oder ein Hinzufügen ermöglicht) und das Ganze auch zur Hauptmodifikation machen kann. Hier können auch eigene Projekte eingetragen werden. Sollten sich bei Leuten im Bildhauermodus ähnliche Einträge vorfinden lassen. Könnte man auch automatisch in Axtmodi springen. Auch hier sollte es Vorprüfungen geben, bevor es auf einen immer höheren Horizon der Community weitergeben wird.</div>
+</div>
+
+<div class="page-footer">
+  <p><a href="index.html">← Back to 3D Knowledge Map</a></p>
+  <p style="margin-top:6px;">gs-commie — The Volksbank Principle for Knowledge</p>
+</div>
+
+<script>
+  // Reveal sections on scroll
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+      }
+    });
+  }, { threshold: 0.1 });
+
+  document.querySelectorAll('[data-reveal]').forEach(el => observer.observe(el));
+</script>
+
+</body>
+</html>

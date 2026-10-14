@@ -1,0 +1,1056 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DIY Product List — Lab Equipment Registry</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:#050510;color:#e0e0e0;font-family:'Inter',system-ui,sans-serif;min-height:100vh;overflow-x:hidden}
+#header{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:14px 28px;background:rgba(8,6,22,0.97);border-bottom:1px solid rgba(0,212,255,0.25);backdrop-filter:blur(12px)}
+#header h1{font-size:14px;font-weight:700;color:#00d4ff;letter-spacing:2px;text-transform:uppercase}
+#header p{font-size:10px;color:rgba(0,212,255,0.5);margin-top:2px}
+#back-btn{display:flex;align-items:center;gap:7px;padding:8px 16px;background:none;border:1px solid rgba(0,212,255,0.35);color:#00d4ff;border-radius:20px;font-size:11px;cursor:pointer;transition:all .2s;text-decoration:none}
+#back-btn:hover{background:rgba(0,212,255,0.1)}
+#main{padding-top:56px;max-width:1400px;margin:0 auto;padding-left:24px;padding-right:24px;padding-bottom:60px}
+.toolbar{display:flex;gap:12px;margin:20px 0;flex-wrap:wrap;align-items:center}
+.toolbar select,.toolbar input{padding:8px 12px;background:rgba(255,255,255,0.04);color:#fff;border:1px solid rgba(255,255,255,0.1);border-radius:8px;font-size:12px}
+.toolbar input{flex:1;min-width:200px}
+.btn{padding:8px 16px;border:1px solid rgba(0,212,255,0.35);background:rgba(0,212,255,0.08);color:#00d4ff;border-radius:8px;font-size:12px;cursor:pointer;transition:all .15s;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+.btn:hover{background:rgba(0,212,255,0.15)}
+.btn.green{border-color:rgba(46,204,113,0.4);background:rgba(46,204,113,0.08);color:#2ecc71}
+.btn.red{border-color:rgba(231,76,60,0.4);background:rgba(231,76,60,0.08);color:#e74c3c}
+.btn.small{padding:5px 10px;font-size:11px}
+.filter-chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{padding:6px 14px;border:1px solid rgba(255,255,255,0.1);border-radius:20px;font-size:11px;cursor:pointer;transition:all .15s;background:rgba(255,255,255,0.03)}
+.chip.active{border-color:rgba(0,212,255,0.5);background:rgba(0,212,255,0.1);color:#00d4ff}
+.chip:hover{border-color:rgba(255,255,255,0.2)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:20px}
+.card{background:rgba(8,6,22,0.8);border:1px solid rgba(255,255,255,0.06);border-radius:14px;overflow:hidden;transition:border-color .2s}
+.card:hover{border-color:rgba(0,212,255,0.2)}
+.card-preview{height:200px;background:rgba(5,5,16,0.6);position:relative;overflow:hidden}
+.card-preview canvas{display:block;width:100%;height:100%}
+.card-preview .no-model{display:flex;align-items:center;justify-content:center;height:100%;color:rgba(255,255,255,0.15);font-size:40px}
+.card-body{padding:16px}
+.card-title{font-size:14px;font-weight:600;margin-bottom:4px;display:flex;justify-content:space-between;align-items:start}
+.card-cat{font-size:10px;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px}
+.card-prices{display:flex;gap:12px;margin-bottom:12px}
+.price-tag{flex:1;padding:8px;border-radius:8px;text-align:center}
+.price-tag.diy{background:rgba(46,204,113,0.08);border:1px solid rgba(46,204,113,0.2)}
+.price-tag.com{background:rgba(231,76,60,0.08);border:1px solid rgba(231,76,60,0.2)}
+.price-tag .label{font-size:8px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.4)}
+.price-tag .val{font-size:16px;font-weight:700}
+.price-tag.diy .val{color:#2ecc71}
+.price-tag.com .val{color:#e74c3c}
+.card-bom{font-size:11px;margin-bottom:12px}
+.card-bom-title{color:rgba(255,255,255,0.4);text-transform:uppercase;font-size:9px;letter-spacing:1px;margin-bottom:6px}
+.bom-item{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.03)}
+.bom-item .part{color:rgba(255,255,255,0.6)}
+.bom-item .cost{color:#2ecc71}
+.card-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.status-badge{display:inline-block;padding:3px 10px;border-radius:12px;font-size:9px;text-transform:uppercase;letter-spacing:1px;font-weight:600}
+.status-pending{background:rgba(255,193,7,0.15);color:#ffc107;border:1px solid rgba(255,193,7,0.3)}
+.status-reviewed{background:rgba(0,212,255,0.15);color:#00d4ff;border:1px solid rgba(0,212,255,0.3)}
+.status-approved{background:rgba(46,204,113,0.15);color:#2ecc71;border:1px solid rgba(46,204,113,0.3)}
+.status-rejected{background:rgba(231,76,60,0.15);color:#e74c3c;border:1px solid rgba(231,76,60,0.3)}
+.card-instructions{font-size:11px;color:rgba(255,255,255,0.5);line-height:1.6;margin-top:10px;max-height:80px;overflow-y:auto;white-space:pre-wrap}
+.empty{text-align:center;padding:80px 20px;color:rgba(255,255,255,0.2)}
+.empty .icon{font-size:48px;margin-bottom:12px}
+/* Modal */
+#modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:200;backdrop-filter:blur(4px)}
+#modal-overlay.show{display:flex;align-items:center;justify-content:center}
+#modal{background:rgba(12,10,26,0.98);border:1px solid rgba(0,212,255,0.2);border-radius:16px;width:700px;max-width:90vw;max-height:85vh;overflow-y:auto;padding:28px}
+#modal h2{font-size:16px;color:#00d4ff;text-transform:uppercase;letter-spacing:1px;margin-bottom:20px}
+.form-group{margin-bottom:16px}
+.form-group label{display:block;font-size:10px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
+.form-group input,.form-group textarea,.form-group select{width:100%;padding:10px 12px;background:rgba(255,255,255,0.04);color:#fff;border:1px solid rgba(255,255,255,0.1);border-radius:8px;font-size:12px;font-family:inherit}
+.form-group textarea{min-height:80px;resize:vertical;line-height:1.5}
+.form-row{display:flex;gap:12px}
+.form-row .form-group{flex:1}
+.bom-row{display:flex;gap:8px;margin-bottom:6px;align-items:center}
+.bom-row input{padding:6px 10px;font-size:11px}
+.bom-row .bom-part{flex:2}
+.bom-row .bom-cost{width:80px}
+.bom-row .bom-src{flex:1}
+.bom-row .bom-remove{width:30px;height:30px;border:none;background:rgba(231,76,60,0.1);color:#e74c3c;border-radius:6px;cursor:pointer;font-size:14px}
+#modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:24px;padding-top:20px;border-top:1px solid rgba(255,255,255,0.06)}
+.glb-drop{border:2px dashed rgba(0,212,255,0.3);border-radius:10px;padding:20px;text-align:center;cursor:pointer;transition:all .2s}
+.glb-drop:hover,.glb-drop.dragover{border-color:rgba(0,212,255,0.6);background:rgba(0,212,255,0.05)}
+.glb-drop .icon{font-size:24px;margin-bottom:6px}
+.glb-drop .label{font-size:11px;color:rgba(255,255,255,0.4)}
+.glb-drop .filename{font-size:11px;color:#2ecc71;margin-top:6px}
+#preview-canvas{width:100%;height:200px;background:rgba(5,5,16,0.6);border-radius:10px;margin-top:10px}
+.review-section{margin-top:16px;padding:14px;background:rgba(255,255,255,0.03);border-radius:10px}
+.review-section h3{font-size:11px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px}
+.review-comment{font-size:11px;color:rgba(255,255,255,0.6);padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04)}
+.review-comment .reviewer{color:#00d4ff;font-weight:600}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);padding:12px 24px;background:rgba(46,204,113,0.15);border:1px solid rgba(46,204,113,0.4);border-radius:10px;color:#2ecc71;font-size:12px;z-index:300;opacity:0;transition:opacity .3s}
+.toast.show{opacity:1}
+#modal-close{position:absolute;top:16px;right:20px;width:32px;height:32px;border:none;background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.5);border-radius:8px;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;transition:all .15s}
+#modal-close:hover{background:rgba(231,76,60,0.15);color:#e74c3c}
+.res-row{display:flex;gap:8px;margin-bottom:6px;align-items:center}
+.res-row select{padding:6px 8px;font-size:11px;background:#fff;color:#000;border:1px solid rgba(0,0,0,0.2);border-radius:6px;width:90px}
+.res-row select option{background:#fff;color:#000}
+.res-row .res-label{flex:1;padding:6px 10px;font-size:11px;background:rgba(255,255,255,0.04);color:#fff;border:1px solid rgba(255,255,255,0.1);border-radius:6px}
+.res-row .res-url{flex:2;padding:6px 10px;font-size:11px;background:rgba(255,255,255,0.04);color:#fff;border:1px solid rgba(255,255,255,0.1);border-radius:6px}
+.res-row .res-remove{width:30px;height:30px;border:none;background:rgba(231,76,60,0.1);color:#e74c3c;border-radius:6px;cursor:pointer;font-size:14px}
+.card-resources{margin-top:10px;display:flex;flex-wrap:wrap;gap:6px}
+.res-link{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:6px;font-size:10px;text-decoration:none;transition:all .15s}
+.res-link:hover{transform:translateY(-1px)}
+.res-link.video{background:rgba(255,0,0,0.1);color:#ff6b6b;border:1px solid rgba(255,0,0,0.2)}
+.res-link.forum{background:rgba(0,212,255,0.1);color:#00d4ff;border:1px solid rgba(0,212,255,0.2)}
+.res-link.file{background:rgba(46,204,113,0.1);color:#2ecc71;border:1px solid rgba(46,204,113,0.2)}
+.res-link.web{background:rgba(155,89,182,0.1);color:#bb8fce;border:1px solid rgba(155,89,182,0.2)}
+.res-link.doc{background:rgba(241,196,15,0.1);color:#f1c40f;border:1px solid rgba(241,196,15,0.2)}
+.res-link.image{background:rgba(230,126,34,0.1);color:#e67e22;border:1px solid rgba(230,126,34,0.2)}
+/* Comparison links */
+.card-comparisons{margin-top:10px}
+.card-comparisons-title{color:rgba(255,255,255,0.4);text-transform:uppercase;font-size:9px;letter-spacing:1px;margin-bottom:6px}
+.cmp-row{display:flex;align-items:center;gap:6px;padding:5px 8px;background:rgba(231,76,60,0.05);border-radius:6px;margin-bottom:4px;border:1px solid rgba(231,76,60,0.1);cursor:pointer;transition:background .15s}
+.cmp-row:hover{background:rgba(231,76,60,0.12)}
+.cmp-row .cmp-brand{font-size:11px;color:#e74c3c;font-weight:600;flex:1}
+.cmp-row .cmp-price{font-size:11px;color:rgba(255,255,255,0.5)}
+.cmp-row .cmp-link{font-size:10px;color:#00d4ff;text-decoration:none}
+.cmp-row .cmp-link:hover{text-decoration:underline}
+.cmp-contest{font-size:9px;padding:2px 6px;border:1px solid rgba(255,193,7,0.3);background:rgba(255,193,7,0.08);color:#ffc107;border-radius:4px;cursor:pointer;white-space:nowrap}
+.cmp-contest:hover{background:rgba(255,193,7,0.15)}
+.cmp-contested{border-color:rgba(255,193,7,0.5);background:rgba(255,193,7,0.08)}
+.cmp-contested-badge{font-size:8px;padding:2px 6px;background:rgba(255,193,7,0.15);color:#ffc107;border-radius:4px;text-transform:uppercase;letter-spacing:0.5px}
+/* Comparison modal rows */
+.cmp-modal-row{display:flex;gap:8px;margin-bottom:6px;align-items:center}
+.cmp-modal-row input{padding:6px 10px;font-size:11px;background:rgba(255,255,255,0.04);color:#fff;border:1px solid rgba(255,255,255,0.1);border-radius:6px}
+.cmp-modal-row .cmp-modal-brand{flex:2}
+.cmp-modal-row .cmp-modal-url{flex:3}
+.cmp-modal-row .cmp-modal-price{width:80px}
+.cmp-modal-row .cmp-modal-remove{width:30px;height:30px;border:none;background:rgba(231,76,60,0.1);color:#e74c3c;border-radius:6px;cursor:pointer;font-size:14px}
+/* Punchies */
+.punchies-section{margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.06)}
+.punchies-header{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.punchies-header h3{font-size:11px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:1px}
+.punchies-cols{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.punchies-col{background:rgba(255,255,255,0.02);border-radius:8px;padding:8px;min-height:40px}
+.punchies-col.pro{border:1px solid rgba(46,204,113,0.15)}
+.punchies-col.con{border:1px solid rgba(231,76,60,0.15)}
+.punchies-col-title{font-size:9px;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;font-weight:600}
+.punchies-col.pro .punchies-col-title{color:#2ecc71}
+.punchies-col.con .punchies-col-title{color:#e74c3c}
+.punchy-item{padding:6px 8px;background:rgba(255,255,255,0.03);border-radius:6px;margin-bottom:5px;font-size:11px}
+.punchy-author{font-size:9px;color:rgba(0,212,255,0.6);font-weight:600;margin-bottom:2px}
+.punchy-text{color:rgba(255,255,255,0.7);line-height:1.4;margin-bottom:4px}
+.punchy-votes{display:flex;align-items:center;gap:8px;font-size:10px}
+.punchy-vote-btn{cursor:pointer;padding:2px 6px;border-radius:4px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.03);color:rgba(255,255,255,0.5);transition:all .15s;user-select:none}
+.punchy-vote-btn:hover{background:rgba(255,255,255,0.08)}
+.punchy-vote-btn.up.active{border-color:rgba(46,204,113,0.5);background:rgba(46,204,113,0.1);color:#2ecc71}
+.punchy-vote-btn.down.active{border-color:rgba(231,76,60,0.5);background:rgba(231,76,60,0.1);color:#e74c3c}
+.punchy-vote-count{color:rgba(255,255,255,0.4);min-width:20px;text-align:center}
+.punchy-add{display:flex;gap:6px;margin-top:6px}
+.punchy-add input{flex:1;padding:6px 8px;font-size:11px;background:rgba(255,255,255,0.04);color:#fff;border:1px solid rgba(255,255,255,0.1);border-radius:6px}
+.punchy-add button{padding:6px 10px;font-size:10px;border:none;border-radius:6px;cursor:pointer;font-weight:600;text-transform:uppercase;letter-spacing:0.5px}
+.punchy-add .add-pro{background:rgba(46,204,113,0.15);color:#2ecc71;border:1px solid rgba(46,204,113,0.3)}
+.punchy-add .add-con{background:rgba(231,76,60,0.15);color:#e74c3c;border:1px solid rgba(231,76,60,0.3)}
+.punchy-login-hint{font-size:10px;color:rgba(255,255,255,0.25);text-align:center;padding:8px}
+/* Contest dialog */
+.contest-dialog{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(12,10,26,0.98);border:1px solid rgba(255,193,7,0.4);border-radius:12px;padding:20px;z-index:300;min-width:360px;max-width:440px;box-shadow:0 12px 40px rgba(0,0,0,0.6)}
+.contest-dialog h3{font-size:13px;color:#ffc107;margin-bottom:12px}
+.contest-dialog .contest-reasons{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.contest-dialog .contest-reason{padding:6px 12px;border:1px solid rgba(255,255,255,0.1);border-radius:6px;font-size:11px;cursor:pointer;transition:all .15s}
+.contest-dialog .contest-reason.selected{border-color:rgba(255,193,7,0.5);background:rgba(255,193,7,0.1);color:#ffc107}
+.contest-dialog textarea{width:100%;min-height:60px;background:rgba(255,255,255,0.04);color:#fff;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:10px;font-size:12px;resize:vertical;font-family:inherit;margin-bottom:12px}
+.contest-dialog .contest-actions{display:flex;gap:8px;justify-content:flex-end}
+</style>
+</head>
+<body>
+
+<div id="header">
+  <div>
+    <h1>DIY Product Registry</h1>
+    <p>Equipment Catalog &mdash; Build Instructions &mdash; BOM &mdash; 3D Models</p>
+  </div>
+  <a id="back-btn" href="index.html">&larr; Back to Roadmap</a>
+</div>
+
+<div id="main">
+  <div class="toolbar">
+    <input type="text" id="search" placeholder="Search products..." />
+    <select id="filter-cat">
+      <option value="">All Categories</option>
+      <option value="centrifugation">Centrifugation</option>
+      <option value="microscopy">Microscopy</option>
+      <option value="incubation">Incubation</option>
+      <option value="ventilation">Ventilation</option>
+      <option value="sterilization">Sterilization</option>
+      <option value="cold-storage">Cold Storage</option>
+      <option value="biosafety">Biosafety</option>
+      <option value="pcr">PCR / Thermal Cycling</option>
+      <option value="diy-custom">Custom DIY</option>
+    </select>
+    <div class="filter-chips">
+      <div class="chip active" data-status="all">All</div>
+      <div class="chip" data-status="pending">Pending</div>
+      <div class="chip" data-status="reviewed">Reviewed</div>
+      <div class="chip" data-status="approved">Approved</div>
+      <div class="chip" data-status="rejected">Rejected</div>
+    </div>
+    <button class="btn" onclick="openModal()">+ Add Product</button>
+    <button class="btn green" onclick="syncToPi()">Sync to Pi</button>
+  </div>
+
+  <div class="grid" id="product-grid"></div>
+  <div class="empty" id="empty-state">
+    <div class="icon">&#128230;</div>
+    <div>No products yet. Click "Add Product" to create your first DIY equipment entry.</div>
+  </div>
+</div>
+
+<div id="modal-overlay">
+  <div id="modal">
+    <button id="modal-close" onclick="closeModal()">&times;</button>
+    <h2 id="modal-title">Add DIY Product</h2>
+    <input type="hidden" id="edit-id" />
+    <div class="form-group">
+      <label>Product Name</label>
+      <input type="text" id="p-name" placeholder="e.g. DIY Mini Centrifuge" />
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Category</label>
+        <select id="p-cat">
+          <option value="centrifugation">Centrifugation</option>
+          <option value="microscopy">Microscopy</option>
+          <option value="incubation">Incubation</option>
+          <option value="ventilation">Ventilation</option>
+          <option value="sterilization">Sterilization</option>
+          <option value="cold-storage">Cold Storage</option>
+          <option value="biosafety">Biosafety</option>
+          <option value="pcr">PCR / Thermal Cycling</option>
+          <option value="diy-custom">Custom DIY</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Status</label>
+        <select id="p-status">
+          <option value="pending">Pending</option>
+          <option value="reviewed">Reviewed</option>
+          <option value="approved">Approved</option>
+          <option value="rejected">Rejected</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>DIY Cost ($)</label>
+        <input type="number" id="p-diy" placeholder="500" />
+      </div>
+      <div class="form-group">
+        <label>Commercial Equivalent ($)</label>
+        <input type="number" id="p-com" placeholder="15000" />
+      </div>
+      <div class="form-group">
+        <label>Commercial Brand</label>
+        <input type="text" id="p-brand" placeholder="Eppendorf 5424R" />
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Commercial Comparisons (Real Product Links)</label>
+      <div id="cmp-rows"></div>
+      <button class="btn small" onclick="addCmpRow()">+ Add Comparison</button>
+    </div>
+    <div class="form-group">
+      <label>Resources &amp; Build Instructions (Links)</label>
+      <div id="res-rows"></div>
+      <button class="btn small" onclick="addResRow()">+ Add Resource</button>
+    </div>
+    <div class="form-group">
+      <label>Bill of Materials (BOM)</label>
+      <div id="bom-rows"></div>
+      <button class="btn small" onclick="addBomRow()">+ Add Part</button>
+    </div>
+    <div class="form-group">
+      <label>3D Model (GLB / GLTF)</label>
+      <div class="glb-drop" id="glb-drop" onclick="document.getElementById('glb-file').click()">
+        <div class="icon">&#128193;</div>
+        <div class="label">Drop .glb file here or click to browse</div>
+        <div class="filename" id="glb-filename"></div>
+      </div>
+      <input type="file" id="glb-file" accept=".glb,.gltf" style="display:none" />
+      <canvas id="preview-canvas"></canvas>
+    </div>
+    <div id="modal-actions">
+      <button class="btn red" onclick="deleteProduct()">Delete</button>
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn green" onclick="saveProduct()">Save Product</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import * as THREE from 'https://esm.sh/three@0.160.0';
+import { GLTFLoader } from 'https://esm.sh/three@0.160.0/examples/jsm/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'https://esm.sh/three@0.160.0/examples/jsm/loaders/DRACOLoader.js';
+import { OrbitControls } from 'https://esm.sh/three@0.160.0/examples/jsm/controls/OrbitControls.js';
+
+const PI_URL = 'http://192.168.2.136:8765';
+const PI_KEY = 'longevity-rag-key';
+const STORAGE_KEY = 'diy_products';
+
+let products = [];
+let currentGLB = null;
+let previewScene = null, previewCamera = null, previewRenderer = null, previewControls = null, previewMesh = null;
+let filterStatus = 'all';
+
+// ── STORAGE ──────────────────────────────────
+function loadProducts() {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  products = raw ? JSON.parse(raw) : getSeedData();
+  if (!raw) saveProducts();
+  render();
+}
+
+function saveProducts() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(products));
+}
+
+function getSeedData() {
+  return [
+    {
+      id: 'seed-1', name: 'DIY Mini Centrifuge', category: 'centrifugation',
+      diyCost: 500, comCost: 15000, comBrand: 'Eppendorf 5424R',
+      status: 'approved',
+      comparisons: [
+        { id: 'cmp-1-1', brand: 'Eppendorf 5424R', url: 'https://www.eppendorf.com/de-de/laboratory-centrifuges/centrifuge-5424r/', price: 15000, addedBy: null, addedDate: '2024-01-15', status: 'active' },
+        { id: 'cmp-1-2', brand: 'Thermo Fisher Sorvall ST 16R', url: 'https://www.thermofisher.com/de/de/home/laboratory-products/centrifuges/sorvall-st16r.html', price: 12000, addedBy: null, addedDate: '2024-01-15', status: 'active' },
+      ],
+      resources: [
+        { type: 'video', label: 'Build Tutorial', url: 'https://www.youtube.com/watch?v=example1' },
+        { type: 'file', label: 'STL Rotor File', url: 'https://www.thingiverse.com/thing:example' },
+        { type: 'forum', label: 'Hackaday Discussion', url: 'https://hackaday.io/...' },
+        { type: 'web', label: 'Parts List & Schematic', url: 'https://github.com/...' },
+      ],
+      bom: [
+        { part: '12V spindle motor', cost: 15, source: 'AliExpress' },
+        { part: 'Arduino Nano', cost: 8, source: 'Amazon' },
+        { part: '3D-printed rotor (PLA)', cost: 5, source: 'Prusa MK3' },
+        { part: 'PWM controller module', cost: 12, source: 'eBay' },
+        { part: 'Acrylic enclosure', cost: 20, source: 'Local hardware' },
+      ],
+      glbData: null, glbName: null,
+      reviews: [{ user: 'admin', comment: 'Tested up to 12000 RPM. Works well for Eppendorf 1.5ml tubes.', date: '2024-01-15' }]
+    },
+    {
+      id: 'seed-2', name: 'Raspberry Pi Microscope', category: 'microscopy',
+      diyCost: 300, comCost: 12000, comBrand: 'Zeiss Primo Star',
+      status: 'reviewed',
+      comparisons: [
+        { id: 'cmp-2-1', brand: 'Zeiss Primo Star', url: 'https://www.zeiss.com/microscopy/int/products/microscopes-for-education/primo-star.html', price: 12000, addedBy: null, addedDate: '2024-02-01', status: 'active' },
+        { id: 'cmp-2-2', brand: 'Leica DM500', url: 'https://www.leica-microsystems.com/de/produkte/lichtmikroskope/leica-dm500/', price: 9000, addedBy: null, addedDate: '2024-02-01', status: 'active' },
+      ],
+      resources: [
+        { type: 'video', label: 'Pi Camera Assembly', url: 'https://www.youtube.com/watch?v=example2' },
+        { type: 'file', label: '3D-printed Body STL', url: 'https://www.thingiverse.com/thing:example2' },
+        { type: 'doc', label: 'Pi HQ Camera Datasheet', url: 'https://datasheets.raspberrypi.com/camera/...' },
+        { type: 'forum', label: 'Pi Microscope Community', url: 'https://forums.raspberrypi.com/...' },
+      ],
+      bom: [
+        { part: 'Raspberry Pi 4 4GB', cost: 55, source: 'Pi Shop' },
+        { part: 'HQ Camera Module', cost: 50, source: 'Pi Shop' },
+        { part: 'C-mount adapter', cost: 30, source: 'Thorlabs' },
+        { part: 'Objective 10x + 40x', cost: 80, source: 'eBay (used)' },
+        { part: 'LED ring light', cost: 15, source: 'Amazon' },
+        { part: '3D-printed body', cost: 10, source: 'Prusa MK3' },
+      ],
+      glbData: null, glbName: null,
+      reviews: [{ user: 'admin', comment: 'Good image quality at 10x. 40x needs better focus mechanism.', date: '2024-02-01' }]
+    },
+    {
+      id: 'seed-3', name: 'Arduino PID Incubator', category: 'incubation',
+      diyCost: 150, comCost: 3500, comBrand: 'Memmert IN30',
+      status: 'approved',
+      comparisons: [
+        { id: 'cmp-3-1', brand: 'Memmert IN30', url: 'https://www.memmert.com/produkte/inkubatoren/typ-in30/', price: 3500, addedBy: null, addedDate: '2024-01-20', status: 'active' },
+        { id: 'cmp-3-2', brand: 'Binder BD 53', url: 'https://www.binder-world.com/de/produkte/inkubatoren/bd-series/', price: 2800, addedBy: null, addedDate: '2024-01-20', status: 'active' },
+      ],
+      resources: [
+        { type: 'video', label: 'PID Tuning Guide', url: 'https://www.youtube.com/watch?v=example3' },
+        { type: 'doc', label: 'Arduino PID Library Docs', url: 'https://playground.arduino.cc/Code/PIDLibrary/' },
+        { type: 'web', label: 'Full Build Blog Post', url: 'https://example.com/incubator-build' },
+      ],
+      bom: [
+        { part: 'Styrofoam cooler 30L', cost: 15, source: 'Local' },
+        { part: 'Arduino Uno', cost: 12, source: 'Amazon' },
+        { part: 'DS18B20 sensor', cost: 3, source: 'AliExpress' },
+        { part: 'Relay module', cost: 5, source: 'eBay' },
+        { part: 'Heat mat 25W', cost: 20, source: 'Reptile supply' },
+      ],
+      glbData: null, glbName: null,
+      reviews: [{ user: 'admin', comment: 'Holds 37°C ±0.5°C. Perfect for bacterial cultures.', date: '2024-01-20' }]
+    },
+  ];
+}
+
+// ── RENDER ───────────────────────────────────
+function render() {
+  const grid = document.getElementById('product-grid');
+  const empty = document.getElementById('empty-state');
+  const search = document.getElementById('search').value.toLowerCase();
+  const cat = document.getElementById('filter-cat').value;
+
+  const filtered = products.filter(p => {
+    if (search && !p.name.toLowerCase().includes(search) && !p.comBrand.toLowerCase().includes(search)) return false;
+    if (cat && p.category !== cat) return false;
+    if (filterStatus !== 'all' && p.status !== filterStatus) return false;
+    return true;
+  });
+
+  if (!filtered.length) {
+    grid.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  grid.innerHTML = filtered.map(p => {
+    const bomHtml = (p.bom || []).slice(0, 5).map(b =>
+      '<div class="bom-item"><span class="part">' + b.part + ' <span style="opacity:.4">(' + b.source + ')</span></span><span class="cost">$' + b.cost + '</span></div>'
+    ).join('');
+    const bomMore = (p.bom || []).length > 5 ? '<div style="font-size:10px;color:rgba(255,255,255,0.2);padding:4px 0">+' + ((p.bom || []).length - 5) + ' more parts</div>' : '';
+    const savings = p.comCost - p.diyCost;
+    const savingsPct = p.comCost > 0 ? Math.round((savings / p.comCost) * 100) : 0;
+
+    return '<div class="card" onclick="openModal(\'' + p.id + '\')">' +
+      '<div class="card-preview" id="preview-' + p.id + '">' +
+        (p.glbData ? '' : '<div class="no-model">&#128193;</div>') +
+      '</div>' +
+      '<div class="card-body">' +
+        '<div class="card-title">' + p.name + ' <span class="status-badge status-' + p.status + '">' + p.status + '</span></div>' +
+        '<div class="card-cat">' + p.category.replace(/-/g, ' ') + (p.glbName ? ' &middot; ' + p.glbName : '') + '</div>' +
+        '<div class="card-prices">' +
+          '<div class="price-tag diy"><div class="label">DIY</div><div class="val">$' + p.diyCost.toLocaleString() + '</div></div>' +
+          '<div class="price-tag com"><div class="label">Commercial</div><div class="val">$' + p.comCost.toLocaleString() + '</div></div>' +
+        '</div>' +
+        '<div style="font-size:10px;color:rgba(46,204,113,0.6);margin-bottom:10px">Save $' + savings.toLocaleString() + ' (' + savingsPct + '%) vs ' + p.comBrand + '</div>' +
+        (p.comparisons && p.comparisons.length ? '<div class="card-comparisons"><div class="card-comparisons-title">⚖️ Commercial Comparisons</div>' + p.comparisons.map(c =>
+          '<div class="cmp-row' + (c.status === 'contested' ? ' cmp-contested' : '') + '" onclick="event.stopPropagation(); window.open(\'' + c.url + '\', \'_blank\');">' +
+            '<span class="cmp-brand">' + c.brand + '</span>' +
+            '<span class="cmp-price">$' + (c.price || 0).toLocaleString() + '</span>' +
+            '<a class="cmp-link" href="' + c.url + '" target="_blank" onclick="event.stopPropagation()">link</a>' +
+            (c.status === 'contested' ? '<span class="cmp-contested-badge">contested</span>' : '<button class="cmp-contest" onclick="event.stopPropagation();openContestDialog(\'' + p.id + '\',\'' + c.id + '\')">⚠ Contest</button>') +
+          '</div>'
+        ).join('') + '</div>' : '') +
+        '<div class="card-bom"><div class="card-bom-title">Bill of Materials (' + (p.bom || []).length + ' parts)</div>' + bomHtml + bomMore + '</div>' +
+        (p.resources && p.resources.length ? '<div class="card-resources">' + p.resources.map(r => '<a class="res-link ' + r.type + '" href="' + r.url + '" target="_blank" onclick="event.stopPropagation()">' + resIcon(r.type) + ' ' + r.label + '</a>').join('') + '</div>' : '') +
+        '<div class="card-actions">' +
+          '<button class="btn small" onclick="event.stopPropagation();openModal(\'' + p.id + '\')">Edit</button>' +
+          '<button class="btn small green" onclick="event.stopPropagation();sendToLab(\'' + p.id + '\')">Send to Lab</button>' +
+          '<button class="btn small" onclick="event.stopPropagation();exportProduct(\'' + p.id + '\')">Export JSON</button>' +
+        '</div>' +
+        '<div class="punchies-section" id="punchies-' + p.id + '" onclick="event.stopPropagation()"></div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+
+  // Render 3D previews for cards with GLB
+  filtered.forEach(p => {
+    if (p.glbData) renderCardPreview(p);
+  });
+
+  // Render punchies for each card
+  filtered.forEach(p => {
+    renderPunchies(p.id);
+  });
+}
+
+// ── 3D PREVIEW (card) ────────────────────────
+const loader = new GLTFLoader();
+const draco = new DRACOLoader();
+draco.setDecoderPath('https://esm.sh/three@0.160.0/examples/jsm/libs/draco/');
+loader.setDRACOLoader(draco);
+
+function renderCardPreview(product) {
+  const container = document.getElementById('preview-' + product.id);
+  if (!container || !product.glbData) return;
+
+  const w = container.clientWidth, h = container.clientHeight;
+  const scene = new THREE.Scene();
+  const cam = new THREE.PerspectiveCamera(45, w / h, 0.1, 100);
+  cam.position.set(3, 2, 3);
+  const rend = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  rend.setSize(w, h);
+  rend.setPixelRatio(window.devicePixelRatio);
+  container.innerHTML = '';
+  container.appendChild(rend.domElement);
+
+  scene.add(new THREE.AmbientLight(0x404060, 0.8));
+  const dl = new THREE.DirectionalLight(0xffffff, 0.6);
+  dl.position.set(5, 8, 5);
+  scene.add(dl);
+
+  const ctrl = new OrbitControls(cam, rend.domElement);
+  ctrl.enableDamping = true;
+  ctrl.autoRotate = true;
+  ctrl.autoRotateSpeed = 1.5;
+
+  // Parse GLB from base64
+  const binary = Uint8Array.from(atob(product.glbData), c => c.charCodeAt(0));
+  const blob = new Blob([binary], { type: 'model/gltf-binary' });
+  const url = URL.createObjectURL(blob);
+  loader.load(url, (gltf) => {
+    const model = gltf.scene;
+    const box = new THREE.Box3().setFromObject(model);
+    const size = new THREE.Vector3(); box.getSize(size);
+    const maxDim = Math.max(size.x, size.y, size.z);
+    if (maxDim > 0) model.scale.setScalar(3 / maxDim);
+    box.setFromObject(model);
+    const center = new THREE.Vector3(); box.getCenter(center);
+    model.position.sub(center);
+    scene.add(model);
+    URL.revokeObjectURL(url);
+  });
+
+  function loop() { requestAnimationFrame(loop); ctrl.update(); rend.render(scene, cam); }
+  loop();
+}
+
+// ── MODAL PREVIEW ────────────────────────────
+function initPreviewCanvas() {
+  const canvas = document.getElementById('preview-canvas');
+  previewScene = new THREE.Scene();
+  previewCamera = new THREE.PerspectiveCamera(45, canvas.clientWidth / canvas.clientHeight, 0.1, 100);
+  previewCamera.position.set(3, 2, 3);
+  previewRenderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+  previewRenderer.setSize(canvas.clientWidth, canvas.clientHeight);
+  previewRenderer.setPixelRatio(window.devicePixelRatio);
+  previewControls = new OrbitControls(previewCamera, canvas);
+  previewControls.enableDamping = true;
+  previewScene.add(new THREE.AmbientLight(0x404060, 0.8));
+  const dl = new THREE.DirectionalLight(0xffffff, 0.6);
+  dl.position.set(5, 8, 5);
+  previewScene.add(dl);
+  function loop() { requestAnimationFrame(loop); previewControls.update(); previewRenderer.render(previewScene, previewCamera); }
+  loop();
+}
+
+function showPreviewGLB(glbData) {
+  if (previewMesh) { previewScene.remove(previewMesh); previewMesh = null; }
+  if (!glbData) return;
+  const binary = Uint8Array.from(atob(glbData), c => c.charCodeAt(0));
+  const blob = new Blob([binary], { type: 'model/gltf-binary' });
+  const url = URL.createObjectURL(blob);
+  loader.load(url, (gltf) => {
+    previewMesh = gltf.scene;
+    const box = new THREE.Box3().setFromObject(previewMesh);
+    const size = new THREE.Vector3(); box.getSize(size);
+    const maxDim = Math.max(size.x, size.y, size.z);
+    if (maxDim > 0) previewMesh.scale.setScalar(3 / maxDim);
+    box.setFromObject(previewMesh);
+    const center = new THREE.Vector3(); box.getCenter(center);
+    previewMesh.position.sub(center);
+    previewScene.add(previewMesh);
+    URL.revokeObjectURL(url);
+  });
+}
+
+// ── MODAL ────────────────────────────────────
+window.openModal = function(id) {
+  const modal = document.getElementById('modal-overlay');
+  modal.classList.add('show');
+  document.getElementById('edit-id').value = id || '';
+  document.getElementById('modal-title').textContent = id ? 'Edit Product' : 'Add DIY Product';
+
+  const p = id ? products.find(x => x.id === id) : null;
+  document.getElementById('p-name').value = p ? p.name : '';
+  document.getElementById('p-cat').value = p ? p.category : 'centrifugation';
+  document.getElementById('p-status').value = p ? p.status : 'pending';
+  document.getElementById('p-diy').value = p ? p.diyCost : '';
+  document.getElementById('p-com').value = p ? p.comCost : '';
+  document.getElementById('p-brand').value = p ? p.comBrand : '';
+  const resRows = document.getElementById('res-rows');
+  resRows.innerHTML = '';
+  if (p && p.resources) p.resources.forEach(r => addResRow(r.type, r.label, r.url));
+  if (!p) addResRow();
+  const cmpRows = document.getElementById('cmp-rows');
+  cmpRows.innerHTML = '';
+  if (p && p.comparisons) p.comparisons.forEach(c => addCmpRow(c.brand, c.url, c.price));
+  currentGLB = p ? p.glbData : null;
+  document.getElementById('glb-filename').textContent = p && p.glbName ? p.glbName : '';
+
+  // BOM rows
+  const bomRows = document.getElementById('bom-rows');
+  bomRows.innerHTML = '';
+  if (p && p.bom) p.bom.forEach(b => addBomRow(b.part, b.cost, b.source));
+  if (!p) addBomRow();
+
+  // Delete button visibility
+  document.querySelector('#modal-actions .btn.red').style.display = p ? '' : 'none';
+
+  if (!previewScene) initPreviewCanvas();
+  showPreviewGLB(currentGLB);
+};
+
+window.closeModal = function() {
+  document.getElementById('modal-overlay').classList.remove('show');
+};
+
+window.addResRow = function(type = 'web', label = '', url = '') {
+  const row = document.createElement('div');
+  row.className = 'res-row';
+  row.innerHTML = '<select class="res-type"><option value="video"' + (type==='video'?' selected':'') + '>Video</option><option value="file"' + (type==='file'?' selected':'') + '>File</option><option value="forum"' + (type==='forum'?' selected':'') + '>Forum</option><option value="web"' + (type==='web'?' selected':'') + '>Web</option><option value="doc"' + (type==='doc'?' selected':'') + '>Doc</option><option value="image"' + (type==='image'?' selected':'') + '>Image</option></select>' +
+    '<input class="res-label" type="text" placeholder="Label (e.g. Build Tutorial)" value="' + label + '" />' +
+    '<input class="res-url" type="text" placeholder="https://..." value="' + url + '" />' +
+    '<button class="res-remove" onclick="this.parentElement.remove()">&times;</button>';
+  document.getElementById('res-rows').appendChild(row);
+};
+
+window.addCmpRow = function(brand = '', url = '', price = '') {
+  const row = document.createElement('div');
+  row.className = 'cmp-modal-row';
+  row.innerHTML = '<input class="cmp-modal-brand" type="text" placeholder="Brand / Model" value="' + brand + '" />' +
+    '<input class="cmp-modal-url" type="text" placeholder="https://product-page-url..." value="' + url + '" />' +
+    '<input class="cmp-modal-price" type="number" placeholder="$" value="' + price + '" />' +
+    '<button class="cmp-modal-remove" onclick="this.parentElement.remove()">&times;</button>';
+  document.getElementById('cmp-rows').appendChild(row);
+};
+
+function resIcon(type) {
+  const icons = { video: '\u25B6', file: '\uD83D\uDCC1', forum: '\uD83D\uDCAC', web: '\uD83C\uDF10', doc: '\uD83D\uDCC4', image: '\uD83D\uDCC7' };
+  return icons[type] || '\uD83D\uDD17';
+}
+
+window.addBomRow = function(part = '', cost = '', source = '') {
+  const row = document.createElement('div');
+  row.className = 'bom-row';
+  row.innerHTML = '<input class="bom-part" type="text" placeholder="Part name" value="' + part + '" />' +
+    '<input class="bom-cost" type="number" placeholder="$" value="' + cost + '" />' +
+    '<input class="bom-src" type="text" placeholder="Source" value="' + source + '" />' +
+    '<button class="bom-remove" onclick="this.parentElement.remove()">&times;</button>';
+  document.getElementById('bom-rows').appendChild(row);
+};
+
+window.saveProduct = function() {
+  const id = document.getElementById('edit-id').value || 'prod-' + Date.now();
+  const bom = [];
+  document.querySelectorAll('.bom-row').forEach(row => {
+    const part = row.querySelector('.bom-part').value;
+    const cost = parseFloat(row.querySelector('.bom-cost').value) || 0;
+    const source = row.querySelector('.bom-src').value;
+    if (part) bom.push({ part, cost, source });
+  });
+
+  const idx = products.findIndex(p => p.id === id);
+
+  const product = {
+    id,
+    name: document.getElementById('p-name').value,
+    category: document.getElementById('p-cat').value,
+    status: document.getElementById('p-status').value,
+    diyCost: parseFloat(document.getElementById('p-diy').value) || 0,
+    comCost: parseFloat(document.getElementById('p-com').value) || 0,
+    comBrand: document.getElementById('p-brand').value,
+    comparisons: [],
+    resources: [],
+    bom,
+    glbData: currentGLB,
+    glbName: document.getElementById('glb-filename').textContent || null,
+    reviews: [],
+    user_id: (idx >= 0 ? products[idx].user_id : (currentUser ? currentUser.id : null))
+  };
+
+  document.querySelectorAll('.res-row').forEach(row => {
+    const type = row.querySelector('.res-type').value;
+    const label = row.querySelector('.res-label').value;
+    const url = row.querySelector('.res-url').value;
+    if (url) product.resources.push({ type, label, url });
+  });
+
+  const existingCmps = (idx >= 0 ? products[idx].comparisons : []) || [];
+  document.querySelectorAll('.cmp-modal-row').forEach(row => {
+    const brand = row.querySelector('.cmp-modal-brand').value;
+    const url = row.querySelector('.cmp-modal-url').value;
+    const price = parseFloat(row.querySelector('.cmp-modal-price').value) || 0;
+    if (url) {
+      const existing = existingCmps.find(c => c.url === url);
+      product.comparisons.push({
+        id: existing ? existing.id : 'cmp-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
+        brand, url, price,
+        addedBy: existing ? existing.addedBy : null,
+        addedDate: existing ? existing.addedDate : new Date().toISOString().slice(0, 10),
+        status: existing ? existing.status : 'active'
+      });
+    }
+  });
+
+  if (idx >= 0) { product.reviews = products[idx].reviews || []; product.glbData = product.glbData || products[idx].glbData; products[idx] = product; }
+  else products.push(product);
+
+  saveProducts();
+  render();
+  closeModal();
+  showToast('Product saved');
+};
+
+window.deleteProduct = function() {
+  const id = document.getElementById('edit-id').value;
+  if (!id) return;
+  if (!confirm('Delete this product?')) return;
+  products = products.filter(p => p.id !== id);
+  saveProducts();
+  render();
+  closeModal();
+  showToast('Product deleted');
+};
+
+window.exportProduct = function(id) {
+  const p = products.find(x => x.id === id);
+  if (!p) return;
+  const blob = new Blob([JSON.stringify(p, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = p.name.replace(/\s+/g, '-').toLowerCase() + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('Exported ' + a.download);
+};
+
+window.sendToLab = function(id) {
+  const p = products.find(x => x.id === id);
+  if (!p) return;
+  // Store in sessionStorage for lab-designer to pick up
+  sessionStorage.setItem('lab-import', JSON.stringify({ id: p.id, name: p.name, glbData: p.glbData }));
+  window.open('lab-designer.html?import=' + p.id, '_blank');
+  showToast('Opening Lab Designer with ' + p.name);
+};
+
+window.syncToPi = async function() {
+  showToast('Syncing to Pi...');
+  try {
+    for (const p of products) {
+      const payload = {
+        text: 'DIY Product: ' + p.name + ' | Category: ' + p.category + ' | DIY Cost: $' + p.diyCost + ' | Commercial: $' + p.comCost + ' (' + p.comBrand + ') | BOM: ' + (p.bom || []).map(b => b.part + ' ($' + b.cost + ')').join(', ') + ' | Resources: ' + (p.resources || []).map(r => r.label + ' (' + r.url + ')').join(', '),
+        metadata: { type: 'diy_product', id: p.id, name: p.name, category: p.category, diyCost: p.diyCost, comCost: p.comCost, status: p.status }
+      };
+      await fetch(PI_URL + '/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-API-Key': PI_KEY },
+        body: JSON.stringify(payload)
+      });
+    }
+    showToast('Synced ' + products.length + ' products to Pi');
+  } catch (e) {
+    showToast('Sync failed: ' + e.message);
+  }
+};
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ── GLB FILE UPLOAD ──────────────────────────
+const glbDrop = document.getElementById('glb-drop');
+const glbFile = document.getElementById('glb-file');
+
+glbFile.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (file) handleGLBFile(file);
+});
+
+glbDrop.addEventListener('dragover', (e) => { e.preventDefault(); glbDrop.classList.add('dragover'); });
+glbDrop.addEventListener('dragleave', () => glbDrop.classList.remove('dragover'));
+glbDrop.addEventListener('drop', (e) => {
+  e.preventDefault();
+  glbDrop.classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if (file && file.name.match(/\.(glb|gltf)$/i)) handleGLBFile(file);
+});
+
+function handleGLBFile(file) {
+  document.getElementById('glb-filename').textContent = file.name;
+  const reader = new FileReader();
+  reader.onload = () => {
+    const binary = new Uint8Array(reader.result);
+    let binaryStr = '';
+    const chunk = 0x8000;
+    for (let i = 0; i < binary.length; i += chunk) {
+      binaryStr += String.fromCharCode.apply(null, binary.subarray(i, i + chunk));
+    }
+    currentGLB = btoa(binaryStr);
+    showPreviewGLB(currentGLB);
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// ── MODAL CLOSE: overlay click + ESC ─────────
+document.getElementById('modal-overlay').addEventListener('click', (e) => {
+  if (e.target === document.getElementById('modal-overlay')) closeModal();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeModal();
+});
+
+// ── SUPABASE INIT ────────────────────────────
+const SUPABASE_URL = 'https://fltnctwslizjueytwqir.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZsdG5jdHdzbGl6anVleXR3cWlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxMzA0NDksImV4cCI6MjA5NDcwNjQ0OX0.kgxowNqCa1KgDRVybJoWdfy_UK9uP2YQcynonqpDsPU';
+let sbClient = null;
+let currentUser = null;
+let _punchyNameCache = {};
+
+async function initSupabase() {
+  try {
+    const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
+    sbClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const { data: { session } } = await sbClient.auth.getSession();
+    if (session) { currentUser = session.user; }
+    sbClient.auth.onAuthStateChange((_e, session) => {
+      currentUser = session?.user || null;
+      render();
+    });
+  } catch(e) { console.warn('Supabase init failed:', e); }
+}
+
+async function fetchPunchyNames(userIds) {
+  if (!sbClient) return;
+  const missing = userIds.filter(id => id && !_punchyNameCache[id]);
+  if (missing.length === 0) return;
+  try {
+    const { data } = await sbClient.from('mindmap_profiles')
+      .select('id, display_name, username')
+      .in('id', missing);
+    if (data) data.forEach(p => { _punchyNameCache[p.id] = p.display_name || p.username || 'Unknown'; });
+  } catch(e) {}
+}
+function punchyAuthorName(uid) { return _punchyNameCache[uid] || 'Unknown'; }
+
+// ── CONTEST DIALOG ───────────────────────────
+window.openContestDialog = function(productId, comparisonId) {
+  if (!currentUser) { showToast('Sign in to contest links'); return; }
+  const existing = document.querySelector('.contest-dialog');
+  if (existing) existing.remove();
+
+  const dlg = document.createElement('div');
+  dlg.className = 'contest-dialog';
+  dlg.innerHTML = `
+    <h3>⚠ Contest this comparison link</h3>
+    <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-bottom:10px;">Why is this link wrong?</div>
+    <div class="contest-reasons">
+      <div class="contest-reason" data-reason="broken">🔗 Broken / Dead link</div>
+      <div class="contest-reason" data-reason="outdated">📅 Outdated</div>
+      <div class="contest-reason" data-reason="not_matching">❌ Not matching</div>
+    </div>
+    <textarea placeholder="Additional details (optional)..."></textarea>
+    <div class="contest-actions">
+      <button class="btn small" onclick="this.closest('.contest-dialog').remove()">Cancel</button>
+      <button class="btn small" style="border-color:rgba(255,193,7,0.4);background:rgba(255,193,7,0.08);color:#ffc107" id="contest-submit">Submit Contest</button>
+    </div>
+  `;
+  document.body.appendChild(dlg);
+
+  let selectedReason = null;
+  dlg.querySelectorAll('.contest-reason').forEach(r => {
+    r.onclick = () => {
+      dlg.querySelectorAll('.contest-reason').forEach(x => x.classList.remove('selected'));
+      r.classList.add('selected');
+      selectedReason = r.dataset.reason;
+    };
+  });
+
+  dlg.querySelector('#contest-submit').onclick = async () => {
+    if (!selectedReason) { showToast('Select a reason'); return; }
+    const comment = dlg.querySelector('textarea').value;
+    try {
+      if (sbClient) {
+        await sbClient.from('diy_contests').insert({
+          user_id: currentUser.id, product_id: productId,
+          comparison_id: comparisonId, reason: selectedReason, comment, status: 'pending'
+        });
+      }
+    } catch(e) { console.warn('Contest insert failed:', e); }
+    const p = products.find(x => x.id === productId);
+    if (p && p.comparisons) {
+      const cmp = p.comparisons.find(c => c.id === comparisonId);
+      if (cmp) cmp.status = 'contested';
+      saveProducts();
+    }
+    dlg.remove();
+    render();
+    showToast('Contest submitted — will be reviewed');
+  };
+
+  setTimeout(() => {
+    document.addEventListener('click', function closeContest(e) {
+      if (!dlg.contains(e.target)) { dlg.remove(); document.removeEventListener('click', closeContest); }
+    });
+  }, 10);
+};
+
+// ── PUNCHIES SYSTEM ──────────────────────────
+let _punchiesCache = {};
+let _punchyVotesCache = {};
+
+async function loadPunchies(productId) {
+  if (!sbClient) return [];
+  try {
+    const { data } = await sbClient.from('punchies')
+      .select('id, user_id, stance, content, vote_total, created_at')
+      .eq('target_type', 'product')
+      .eq('target_id', productId)
+      .order('vote_total', { ascending: false });
+    if (data) {
+      const uids = [...new Set(data.map(d => d.user_id).filter(Boolean))];
+      await fetchPunchyNames(uids);
+      _punchiesCache[productId] = data;
+    }
+    if (currentUser) {
+      const punchieIds = (data || []).map(d => d.id);
+      if (punchieIds.length > 0) {
+        const { data: votes } = await sbClient.from('punchie_votes')
+          .select('punchie_id, vote')
+          .eq('user_id', currentUser.id)
+          .in('punchie_id', punchieIds);
+        if (votes) votes.forEach(v => { _punchyVotesCache[v.punchie_id] = v.vote; });
+      }
+    }
+    return data || [];
+  } catch(e) { console.warn('Punchies load failed:', e); return []; }
+}
+
+async function addPunchy(productId, stance, text) {
+  if (!currentUser) { showToast('Sign in to add punchies'); return; }
+  if (!text.trim()) return;
+  try {
+    const { data, error } = await sbClient.from('punchies').insert({
+      user_id: currentUser.id, target_type: 'product', target_id: productId,
+      stance, content: text.trim(), vote_total: 0
+    }).select('id, user_id, stance, content, vote_total, created_at').single();
+    if (error) throw error;
+    if (data) {
+      _punchyNameCache[data.user_id] = (currentUser.user_metadata?.full_name || currentUser.email?.split('@')[0] || 'You');
+      if (!_punchiesCache[productId]) _punchiesCache[productId] = [];
+      _punchiesCache[productId].unshift(data);
+      await sendPunchyNotification(productId, stance, text.trim());
+      renderPunchies(productId);
+    }
+  } catch(e) { console.warn('Add punchy failed:', e); showToast('Failed to add punchy'); }
+}
+
+async function votePunchy(punchieId, delta, productId) {
+  if (!currentUser) { showToast('Sign in to vote'); return; }
+  const current = _punchyVotesCache[punchieId] || 0;
+  const next = Math.max(-2, Math.min(2, current + delta));
+  if (next === current) return;
+  try {
+    await sbClient.from('punchie_votes').upsert({
+      punchie_id: punchieId, user_id: currentUser.id, vote: next
+    }, { onConflict: 'punchie_id,user_id' });
+    _punchyVotesCache[punchieId] = next;
+    const punchy = (_punchiesCache[productId] || []).find(p => p.id === punchieId);
+    if (punchy) punchy.vote_total = (punchy.vote_total || 0) + delta;
+    renderPunchies(productId);
+  } catch(e) { console.warn('Vote failed:', e); }
+}
+
+async function sendPunchyNotification(productId, stance, text) {
+  if (!sbClient || !currentUser) return;
+  try {
+    const p = products.find(x => x.id === productId);
+    if (!p) return;
+    const ownerId = p.user_id || p.addedBy;
+    if (!ownerId || ownerId === currentUser.id) return;
+    const { data: profile } = await sbClient.from('mindmap_profiles')
+      .select('id').eq('id', ownerId).maybeSingle();
+    if (profile) {
+      await sbClient.from('mindmap_notifications').insert({
+        user_id: ownerId,
+        type: 'punchy',
+        message: '🥊 New ' + stance + ' punchy on "' + p.name + '": ' + text.slice(0, 60),
+        data: { target_type: 'product', target_id: productId, stance }
+      });
+    }
+  } catch(e) {}
+}
+
+function renderPunchies(productId) {
+  const container = document.getElementById('punchies-' + productId);
+  if (!container) return;
+  const punchies = _punchiesCache[productId] || [];
+  const pros = punchies.filter(p => p.stance === 'pro');
+  const cons = punchies.filter(p => p.stance === 'con');
+
+  const renderItem = (p) => {
+    const myVote = _punchyVotesCache[p.id] || 0;
+    return '<div class="punchy-item">' +
+      '<div class="punchy-author">' + punchyAuthorName(p.user_id) + '</div>' +
+      '<div class="punchy-text">' + escapeHtml(p.content) + '</div>' +
+      '<div class="punchy-votes">' +
+        '<span class="punchy-vote-btn up' + (myVote > 0 ? ' active' : '') + '" onclick="votePunchy(' + p.id + ',1,\'' + productId + '\')">👍</span>' +
+        '<span class="punchy-vote-count">' + (p.vote_total || 0) + '</span>' +
+        '<span class="punchy-vote-btn down' + (myVote < 0 ? ' active' : '') + '" onclick="votePunchy(' + p.id + ',-1,\'' + productId + '\')">👎</span>' +
+      '</div>' +
+    '</div>';
+  };
+
+  const addForm = currentUser ?
+    '<div class="punchy-add">' +
+      '<input type="text" id="punchy-input-' + productId + '" placeholder="Add a punchy..." />' +
+      '<button class="add-pro" onclick="addPunchyFromInput(\'' + productId + '\',\'pro\')">+ Pro</button>' +
+      '<button class="add-con" onclick="addPunchyFromInput(\'' + productId + '\',\'con\')">+ Con</button>' +
+    '</div>'
+    : '<div class="punchy-login-hint">Sign in to add punchies and vote</div>';
+
+  container.innerHTML =
+    '<div class="punchies-header"><h3>🥊 Punchies</h3></div>' +
+    '<div class="punchies-cols">' +
+      '<div class="punchies-col pro"><div class="punchies-col-title">✅ Pros</div>' +
+        (pros.length ? pros.map(renderItem).join('') : '<div style="font-size:10px;color:rgba(255,255,255,0.2);padding:4px">No pros yet</div>') +
+      '</div>' +
+      '<div class="punchies-col con"><div class="punchies-col-title">❌ Cons</div>' +
+        (cons.length ? cons.map(renderItem).join('') : '<div style="font-size:10px;color:rgba(255,255,255,0.2);padding:4px">No cons yet</div>') +
+      '</div>' +
+    '</div>' + addForm;
+}
+
+window.addPunchyFromInput = function(productId, stance) {
+  const input = document.getElementById('punchy-input-' + productId);
+  if (!input || !input.value.trim()) return;
+  addPunchy(productId, stance, input.value);
+  input.value = '';
+};
+
+window.votePunchy = votePunchy;
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+async function loadAllPunchies() {
+  if (!sbClient) return;
+  for (const p of products) {
+    await loadPunchies(p.id);
+  }
+  render();
+}
+
+// ── FILTERS ──────────────────────────────────
+document.getElementById('search').addEventListener('input', render);
+document.getElementById('filter-cat').addEventListener('change', render);
+
+document.querySelectorAll('.chip').forEach(c => {
+  c.onclick = () => {
+    document.querySelectorAll('.chip').forEach(x => x.classList.remove('active'));
+    c.classList.add('active');
+    filterStatus = c.dataset.status;
+    render();
+  };
+});
+
+// ── INIT ─────────────────────────────────────
+loadProducts();
+initSupabase().then(() => loadAllPunchies());
+</script>
+</body>
+</html>

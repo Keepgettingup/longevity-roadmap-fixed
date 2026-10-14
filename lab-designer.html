@@ -1,0 +1,1340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lab Designer — 3D Equipment Planner</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:#050510;color:#e0e0e0;font-family:'Inter',system-ui,sans-serif;min-height:100vh;overflow:hidden}
+#page-header{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:14px 28px;background:rgba(8,6,22,0.97);border-bottom:1px solid rgba(0,212,255,0.25);backdrop-filter:blur(12px)}
+#page-header h1{font-size:14px;font-weight:700;color:#00d4ff;letter-spacing:2px;text-transform:uppercase}
+#page-header p{font-size:10px;color:rgba(0,212,255,0.5);margin-top:2px}
+#back-btn{display:flex;align-items:center;gap:7px;padding:8px 16px;background:none;border:1px solid rgba(0,212,255,0.35);color:#00d4ff;border-radius:20px;font-size:11px;cursor:pointer;transition:all .2s}
+#back-btn:hover{background:rgba(0,212,255,0.1)}
+#app{display:flex;height:100vh;padding-top:56px}
+#sidebar{width:320px;min-width:320px;background:rgba(8,6,22,0.95);border-right:1px solid rgba(255,255,255,0.08);overflow-y:auto;padding:16px}
+.sb-section{margin-bottom:20px}
+.sb-section h3{font-size:10px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.06)}
+#ifc-upload-zone{border:2px dashed rgba(0,212,255,0.3);border-radius:10px;padding:24px 16px;text-align:center;cursor:pointer;transition:all .2s}
+#ifc-upload-zone:hover,#ifc-upload-zone.dragover{border-color:rgba(0,212,255,0.6);background:rgba(0,212,255,0.05)}
+#ifc-upload-zone .icon{font-size:28px;margin-bottom:8px}
+#ifc-upload-zone .label{font-size:11px;color:rgba(255,255,255,0.5)}
+#ifc-file-input{display:none}
+.eq-item{display:flex;align-items:center;gap:10px;padding:10px 12px;margin-bottom:6px;background:rgba(255,255,255,0.04);border-radius:8px;cursor:grab;transition:background .15s;font-size:12px}
+.eq-item:hover{background:rgba(255,255,255,0.08)}
+.eq-item .eq-icon{font-size:18px}
+.eq-item .eq-name{flex:1;font-weight:500}
+.eq-item .eq-cat{font-size:9px;color:rgba(255,255,255,0.3)}
+.prop-row{display:flex;justify-content:space-between;padding:6px 0;font-size:11px;border-bottom:1px solid rgba(255,255,255,0.04)}
+.prop-row .key{color:rgba(255,255,255,0.4)}
+.prop-row .val{color:#00d4ff;font-weight:500}
+#viewport{flex:1;position:relative;background:#0a0a18;overflow:hidden}
+#viewport canvas{display:block}
+#viewport-overlay{position:absolute;top:16px;left:16px;display:flex;gap:8px;z-index:10}
+.vp-btn{padding:8px 14px;background:rgba(12,10,26,0.9);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:11px;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:6px}
+.vp-btn:hover{border-color:rgba(0,212,255,0.4);background:rgba(0,212,255,0.08)}
+.vp-btn.active{border-color:rgba(0,212,255,0.6);background:rgba(0,212,255,0.12)}
+#status-bar{position:absolute;bottom:16px;left:16px;font-size:10px;color:rgba(255,255,255,0.3);z-index:10}
+#loading-overlay{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:rgba(5,5,16,0.8);z-index:50;backdrop-filter:blur(4px)}
+#loading-overlay.show{display:flex}
+#loading-overlay .spinner{width:40px;height:40px;border:3px solid rgba(0,212,255,0.2);border-top-color:#00d4ff;border-radius:50%;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#props-panel{display:none}
+#props-panel.show{display:block}
+#model-tree{font-size:11px;max-height:200px;overflow-y:auto}
+.tree-item{padding:4px 8px;cursor:pointer;border-radius:4px;transition:background .1s}
+.tree-item:hover{background:rgba(255,255,255,0.06)}
+.tree-item.selected{background:rgba(0,212,255,0.12)}
+#cost-panel{display:none;position:fixed;top:56px;right:0;width:380px;height:calc(100vh - 56px);background:rgba(8,6,22,0.98);border-left:1px solid rgba(0,212,255,0.15);z-index:90;overflow-y:auto;padding:20px;transform:translateX(100%);transition:transform .3s}
+#cost-panel.open{transform:translateX(0)}
+#cost-panel h2{font-size:14px;color:#00d4ff;text-transform:uppercase;letter-spacing:1px;margin-bottom:16px}
+.cost-summary{display:flex;gap:12px;margin-bottom:20px}
+.cost-card{flex:1;padding:14px;border-radius:10px;text-align:center}
+.cost-card.diy{background:rgba(46,204,113,0.1);border:1px solid rgba(46,204,113,0.3)}
+.cost-card.com{background:rgba(231,76,60,0.1);border:1px solid rgba(231,76,60,0.3)}
+.cost-card .label{font-size:9px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.4);margin-bottom:6px}
+.cost-card .value{font-size:20px;font-weight:700}
+.cost-card.diy .value{color:#2ecc71}
+.cost-card.com .value{color:#e74c3c}
+.cost-card .savings{font-size:10px;color:rgba(255,255,255,0.3);margin-top:4px}
+.cost-table{width:100%;font-size:11px;border-collapse:collapse}
+.cost-table th{text-align:left;padding:8px 6px;color:rgba(255,255,255,0.4);text-transform:uppercase;font-size:9px;letter-spacing:1px;border-bottom:1px solid rgba(255,255,255,0.08)}
+.cost-table td{padding:8px 6px;border-bottom:1px solid rgba(255,255,255,0.04)}
+.cost-table .diy-price{color:#2ecc71}
+.cost-table .com-price{color:#e74c3c}
+.cost-table .qty{color:rgba(255,255,255,0.3);font-size:10px}
+.cost-toggle{display:flex;gap:6px;margin-bottom:16px}
+.cost-toggle button{flex:1;padding:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:#fff;border-radius:6px;font-size:11px;cursor:pointer;transition:all .15s}
+.cost-toggle button.active{border-color:rgba(0,212,255,0.5);background:rgba(0,212,255,0.08)}
+.cost-empty{text-align:center;padding:40px 20px;color:rgba(255,255,255,0.2);font-size:12px}
+/* Layout save/load */
+.layout-bar{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.layout-bar input{padding:6px 10px;background:rgba(255,255,255,0.04);color:#fff;border:1px solid rgba(255,255,255,0.1);border-radius:6px;font-size:11px;flex:1;min-width:120px}
+.layout-bar select{padding:6px 10px;background:rgba(255,255,255,0.04);color:#fff;border:1px solid rgba(255,255,255,0.1);border-radius:6px;font-size:11px;flex:1;min-width:120px}
+.layout-item{display:flex;align-items:center;gap:8px;padding:8px 10px;background:rgba(255,255,255,0.04);border-radius:8px;margin-bottom:5px;font-size:11px}
+.layout-item .layout-name{flex:1;font-weight:500}
+.layout-item .layout-meta{font-size:9px;color:rgba(255,255,255,0.3)}
+.layout-item button{padding:4px 8px;font-size:10px;border:1px solid rgba(0,212,255,0.3);background:rgba(0,212,255,0.08);color:#00d4ff;border-radius:5px;cursor:pointer}
+.layout-item button:hover{background:rgba(0,212,255,0.15)}
+/* Punchies panel */
+#punchies-panel{display:none;position:fixed;top:56px;right:0;width:380px;height:calc(100vh - 56px);background:rgba(8,6,22,0.98);border-left:1px solid rgba(46,204,113,0.2);z-index:90;overflow-y:auto;padding:20px;transform:translateX(100%);transition:transform .3s}
+#punchies-panel.open{transform:translateX(0);display:block}
+#punchies-panel h2{font-size:14px;color:#2ecc71;text-transform:uppercase;letter-spacing:1px;margin-bottom:16px}
+.punchies-cols{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.punchies-col{background:rgba(255,255,255,0.02);border-radius:8px;padding:8px;min-height:60px}
+.punchies-col.pro{border:1px solid rgba(46,204,113,0.15)}
+.punchies-col.con{border:1px solid rgba(231,76,60,0.15)}
+.punchies-col-title{font-size:9px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;font-weight:600}
+.punchies-col.pro .punchies-col-title{color:#2ecc71}
+.punchies-col.con .punchies-col-title{color:#e74c3c}
+.punchy-item{padding:6px 8px;background:rgba(255,255,255,0.03);border-radius:6px;margin-bottom:5px;font-size:11px}
+.punchy-author{font-size:9px;color:rgba(0,212,255,0.6);font-weight:600;margin-bottom:2px}
+.punchy-text{color:rgba(255,255,255,0.7);line-height:1.4;margin-bottom:4px}
+.punchy-votes{display:flex;align-items:center;gap:8px;font-size:10px}
+.punchy-vote-btn{cursor:pointer;padding:2px 6px;border-radius:4px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.03);color:rgba(255,255,255,0.5);transition:all .15s;user-select:none}
+.punchy-vote-btn:hover{background:rgba(255,255,255,0.08)}
+.punchy-vote-btn.up.active{border-color:rgba(46,204,113,0.5);background:rgba(46,204,113,0.1);color:#2ecc71}
+.punchy-vote-btn.down.active{border-color:rgba(231,76,60,0.5);background:rgba(231,76,60,0.1);color:#e74c3c}
+.punchy-vote-count{color:rgba(255,255,255,0.4);min-width:20px;text-align:center}
+.punchy-add{display:flex;gap:6px;margin-top:8px}
+.punchy-add input{flex:1;padding:6px 8px;font-size:11px;background:rgba(255,255,255,0.04);color:#fff;border:1px solid rgba(255,255,255,0.1);border-radius:6px}
+.punchy-add button{padding:6px 10px;font-size:10px;border:none;border-radius:6px;cursor:pointer;font-weight:600;text-transform:uppercase;letter-spacing:0.5px}
+.punchy-add .add-pro{background:rgba(46,204,113,0.15);color:#2ecc71;border:1px solid rgba(46,204,113,0.3)}
+.punchy-add .add-con{background:rgba(231,76,60,0.15);color:#e74c3c;border:1px solid rgba(231,76,60,0.3)}
+.punchy-login-hint{font-size:10px;color:rgba(255,255,255,0.25);text-align:center;padding:12px}
+/* Versus modal */
+.versus-modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(12,10,26,0.98);border:1px solid rgba(0,212,255,0.3);border-radius:16px;padding:24px;z-index:300;min-width:600px;max-width:800px;max-height:80vh;overflow-y:auto;box-shadow:0 12px 40px rgba(0,0,0,0.6)}
+.versus-modal h2{font-size:14px;color:#00d4ff;text-transform:uppercase;letter-spacing:1px;margin-bottom:16px}
+.versus-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.versus-col{background:rgba(255,255,255,0.03);border-radius:10px;padding:14px}
+.versus-col h3{font-size:12px;color:#fff;margin-bottom:10px}
+.versus-stat{display:flex;justify-content:space-between;padding:4px 0;font-size:11px;border-bottom:1px solid rgba(255,255,255,0.04)}
+.versus-stat .key{color:rgba(255,255,255,0.4)}
+.versus-stat .val{color:#00d4ff;font-weight:500}
+</style>
+</head>
+<body>
+
+<div id="page-header">
+  <div>
+    <h1>Lab Designer</h1>
+    <p>glTF / GLB / IFC Equipment Planner</p>
+  </div>
+  <button id="back-btn" onclick="window.history.length > 1 ? window.history.back() : window.close()">&#8592; Back to Roadmap</button>
+</div>
+
+<div id="app">
+  <div id="sidebar">
+    <div class="sb-section">
+      <h3>3D Model Import</h3>
+      <div id="ifc-upload-zone" onclick="document.getElementById('ifc-file-input').click()">
+        <div class="icon">&#128193;</div>
+        <div class="label">Drop .glb / .gltf / .ifc here or click</div>
+      </div>
+      <input type="file" id="ifc-file-input" accept=".glb,.gltf,.ifc,.ifczip">
+    </div>
+
+    <div class="sb-section">
+      <h3>Environment</h3>
+      <select id="env-select" style="width:100%;padding:8px;background:rgba(255,255,255,0.04);color:#fff;border:1px solid rgba(255,255,255,0.1);border-radius:6px;font-size:11px;">
+        <option value="studio">Studio</option>
+        <option value="lab">Lab Environment</option>
+        <option value="warehouse">Warehouse</option>
+        <option value="none">None (dark)</option>
+      </select>
+    </div>
+
+    <div class="sb-section">
+      <h3>Equipment Palette</h3>
+      <div class="eq-item" draggable="true" data-eq="centrifuge">
+        <span class="eq-icon">&#128260;</span><span class="eq-name">Centrifuge</span><span class="eq-cat">Procedural 3D</span>
+      </div>
+      <div class="eq-item" draggable="true" data-eq="microscope">
+        <span class="eq-icon">&#128302;</span><span class="eq-name">Microscope</span><span class="eq-cat">Procedural 3D</span>
+      </div>
+      <div class="eq-item" draggable="true" data-eq="incubator">
+        <span class="eq-icon">&#127777;&#65039;</span><span class="eq-name">Incubator</span><span class="eq-cat">Procedural 3D</span>
+      </div>
+      <div class="eq-item" draggable="true" data-eq="fumehood">
+        <span class="eq-icon">&#128168;</span><span class="eq-name">Fume Hood</span><span class="eq-cat">Procedural 3D</span>
+      </div>
+      <div class="eq-item" draggable="true" data-eq="autoclave">
+        <span class="eq-icon">&#128274;</span><span class="eq-name">Autoclave</span><span class="eq-cat">Procedural 3D</span>
+      </div>
+      <div class="eq-item" draggable="true" data-eq="freezer">
+        <span class="eq-icon">&#129482;</span><span class="eq-name">Freezer -80C</span><span class="eq-cat">Procedural 3D</span>
+      </div>
+      <div class="eq-item" draggable="true" data-eq="biosafety">
+        <span class="eq-icon">&#129440;</span><span class="eq-name">Biosafety Cabinet</span><span class="eq-cat">Procedural 3D</span>
+      </div>
+      <div class="eq-item" draggable="true" data-eq="pcr">
+        <span class="eq-icon">&#129776;</span><span class="eq-name">PCR Thermocycler</span><span class="eq-cat">Procedural 3D</span>
+      </div>
+      <div style="margin-top:10px;padding:8px;background:rgba(0,212,255,0.04);border-radius:6px;font-size:10px;color:rgba(255,255,255,0.3);line-height:1.5;">
+        Tip: Drop .glb files to load real manufacturer 3D models. Equipment above generates procedural detailed meshes.
+      </div>
+    </div>
+
+    <div class="sb-section">
+      <h3>Model Tree</h3>
+      <div id="model-tree"><div style="color:rgba(255,255,255,0.3);font-size:11px;padding:8px">No model loaded</div></div>
+    </div>
+
+    <div class="sb-section" id="props-panel">
+      <h3>Properties</h3>
+      <div id="props-content"></div>
+    </div>
+  </div>
+
+  <div id="viewport">
+    <div id="viewport-overlay">
+      <button class="vp-btn active" id="btn-orbit" data-mode="orbit">Orbit</button>
+      <button class="vp-btn" id="btn-pan" data-mode="pan">Pan</button>
+      <button class="vp-btn" id="btn-grid" data-mode="grid">Grid</button>
+      <button class="vp-btn" id="btn-export" data-mode="export">Export IFC</button>
+      <button class="vp-btn" id="btn-export-glb" data-mode="export-glb">Export GLB</button>
+      <button class="vp-btn" id="btn-cost" data-mode="cost">$ Budget</button>
+      <button class="vp-btn" id="btn-save-layout" data-mode="save">💾 Save Layout</button>
+      <button class="vp-btn" id="btn-load-layout" data-mode="load">📂 Load Layout</button>
+      <button class="vp-btn" id="btn-versus" data-mode="versus">⚔ Versus</button>
+      <button class="vp-btn" id="btn-punchies" data-mode="punchies">🥊 Punchies</button>
+    </div>
+    <div id="loading-overlay"><div class="spinner"></div></div>
+    <div id="status-bar">Ready - drag equipment or import IFC</div>
+  </div>
+</div>
+
+<div id="cost-panel">
+  <h2>Budget Calculator</h2>
+  <div class="cost-toggle">
+    <button class="active" id="cost-view-all" data-view="all">All</button>
+    <button id="cost-view-diy" data-view="diy">DIY Only</button>
+    <button id="cost-view-com" data-view="com">Commercial Only</button>
+  </div>
+  <div class="cost-summary" id="cost-summary"></div>
+  <table class="cost-table" id="cost-table"></table>
+  <div class="cost-empty" id="cost-empty">No equipment placed yet.<br>Drag items into the viewport to see cost comparison.</div>
+</div>
+
+<div id="punchies-panel">
+  <h2>🥊 Lab Punchies</h2>
+  <div id="punchies-layout-name" style="font-size:11px;color:rgba(255,255,255,0.4);margin-bottom:12px;">No layout loaded</div>
+  <div id="punchies-content"></div>
+</div>
+
+<script type="module">
+import * as THREE from 'https://esm.sh/three@0.160.0';
+import { OrbitControls } from 'https://esm.sh/three@0.160.0/examples/jsm/controls/OrbitControls.js';
+import { GLTFLoader } from 'https://esm.sh/three@0.160.0/examples/jsm/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'https://esm.sh/three@0.160.0/examples/jsm/loaders/DRACOLoader.js';
+import { RoomEnvironment } from 'https://esm.sh/three@0.160.0/examples/jsm/environments/RoomEnvironment.js';
+import { GLTFExporter } from 'https://esm.sh/three@0.160.0/examples/jsm/exporters/GLTFExporter.js';
+
+const viewport = document.getElementById('viewport');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0a0a18);
+
+const camera = new THREE.PerspectiveCamera(50, viewport.clientWidth / viewport.clientHeight, 0.1, 10000);
+camera.position.set(15, 12, 15);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(viewport.clientWidth, viewport.clientHeight);
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.shadowMap.enabled = true;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.0;
+viewport.appendChild(renderer.domElement);
+
+// Environment map for realistic reflections
+const pmremGenerator = new THREE.PMREMGenerator(renderer);
+let envMap = null;
+function setEnvironment(type) {
+  if (type === 'none') {
+    scene.environment = null;
+    scene.background = new THREE.Color(0x0a0a18);
+    return;
+  }
+  const env = new RoomEnvironment(renderer);
+  envMap = pmremGenerator.fromScene(env, 0.04).texture;
+  scene.environment = envMap;
+  if (type === 'lab') {
+    scene.background = new THREE.Color(0x1a1a2e);
+  } else if (type === 'warehouse') {
+    scene.background = new THREE.Color(0x222222);
+  } else {
+    scene.background = new THREE.Color(0x0a0a18);
+  }
+}
+setEnvironment('studio');
+
+document.getElementById('env-select').onchange = (e) => setEnvironment(e.target.value);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.1;
+
+scene.add(new THREE.AmbientLight(0x404060, 0.6));
+const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+dirLight.position.set(20, 30, 20);
+dirLight.castShadow = true;
+scene.add(dirLight);
+
+const gridHelper = new THREE.GridHelper(20, 20, 0x00d4ff, 0x222244);
+scene.add(gridHelper);
+
+const groundPlane = new THREE.Mesh(
+  new THREE.PlaneGeometry(100, 100),
+  new THREE.MeshBasicMaterial({ visible: false })
+);
+groundPlane.rotation.x = -Math.PI / 2;
+groundPlane.name = 'ground';
+scene.add(groundPlane);
+
+const EQUIPMENT = {
+  centrifuge:  { name: 'Centrifuge',        scale: 1.0, color: 0x2c3e50, diy: 500,    com: 15000,   comBrand: 'Eppendorf 5424R',  diyDesc: 'Spindle motor + 3D-printed rotor' },
+  microscope:  { name: 'Microscope',        scale: 1.0, color: 0x2c3e50, diy: 300,    com: 12000,   comBrand: 'Zeiss Primo Star', diyDesc: 'Raspberry Pi cam + lens system' },
+  incubator:   { name: 'Incubator',         scale: 1.0, color: 0x2c3e50, diy: 150,    com: 3500,    comBrand: 'Memmert IN30',     diyDesc: 'Arduino + PID + heat element' },
+  fumehood:    { name: 'Fume Hood',         scale: 1.0, color: 0x2c3e50, diy: 800,    com: 8000,    comBrand: 'Labconco Protector',diyDesc: 'IKEA cabinet + inline fan + HEPA' },
+  autoclave:   { name: 'Autoclave',         scale: 1.0, color: 0x2c3e50, diy: 400,    com: 6000,    comBrand: 'Tuttnauer 3870EA', diyDesc: 'Pressure cooker + heating element' },
+  freezer:     { name: 'Freezer -80C',      scale: 1.0, color: 0x2c3e50, diy: 1200,   com: 12000,   comBrand: 'Thermo TSX600',    diyDesc: 'Cascade compressor + PID controller' },
+  biosafety:   { name: 'Biosafety Cabinet', scale: 1.0, color: 0x2c3e50, diy: 2000,   com: 15000,   comBrand: 'BSC Class II A2',  diyDesc: 'HEPA filter + blower + acrylic box' },
+  pcr:         { name: 'PCR Thermocycler',  scale: 1.0, color: 0x2c3e50, diy: 250,    com: 9000,    comBrand: 'Bio-Rad T100',     diyDesc: 'Peltier modules + Arduino control' },
+};
+
+// Materials
+function mat(color, metalness = 0.8, roughness = 0.3) {
+  return new THREE.MeshStandardMaterial({ color, metalness, roughness, envMapIntensity: 1.0 });
+}
+const matSteel = mat(0xb0bec5, 0.9, 0.2);
+const matDarkSteel = mat(0x37474f, 0.8, 0.3);
+const matGlass = new THREE.MeshPhysicalMaterial({ color: 0x80d8ff, metalness: 0, roughness: 0.05, transmission: 0.8, transparent: true, opacity: 0.5, envMapIntensity: 1.5 });
+const matPlastic = mat(0x263238, 0.1, 0.7);
+const matWhite = mat(0xf5f5f5, 0.1, 0.6);
+const matBlue = mat(0x2196f3, 0.6, 0.3);
+const matRed = mat(0xe53935, 0.5, 0.4);
+const matDisplay = new THREE.MeshStandardMaterial({ color: 0x00e5ff, emissive: 0x00e5ff, emissiveIntensity: 0.5, metalness: 0.2, roughness: 0.3 });
+
+// ── PROCEDURAL EQUIPMENT BUILDERS ─────────────────
+function buildCentrifuge() {
+  const g = new THREE.Group();
+  // Base
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.4, 0.15, 32), matDarkSteel);
+  base.position.y = 0.075; base.castShadow = true; g.add(base);
+  // Body
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.35, 0.45, 32), matSteel);
+  body.position.y = 0.375; body.castShadow = true; g.add(body);
+  // Lid (glass dome)
+  const lid = new THREE.Mesh(new THREE.SphereGeometry(0.3, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2), matGlass);
+  lid.position.y = 0.6; g.add(lid);
+  // Rotor (visible through glass)
+  const rotor = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.05, 6), matDarkSteel);
+  rotor.position.y = 0.58; g.add(rotor);
+  // Tube holders
+  for (let i = 0; i < 6; i++) {
+    const angle = (i / 6) * Math.PI * 2;
+    const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.08, 8), matBlue);
+    tube.position.set(Math.cos(angle) * 0.15, 0.58, Math.sin(angle) * 0.15);
+    tube.rotation.z = 0.3; g.add(tube);
+  }
+  // Display
+  const display = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.06, 0.02), matDisplay);
+  display.position.set(0, 0.35, 0.36); g.add(display);
+  return g;
+}
+
+function buildMicroscope() {
+  const g = new THREE.Group();
+  // Base
+  const base = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.05, 0.2), matDarkSteel);
+  base.position.y = 0.025; base.castShadow = true; g.add(base);
+  // Arm (curved support)
+  const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.35, 16), matSteel);
+  arm.position.set(0, 0.225, 0.05); arm.castShadow = true; g.add(arm);
+  // Eyepiece
+  const eyepiece = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.12, 16), matDarkSteel);
+  eyepiece.position.set(0, 0.47, 0.05); eyepiece.rotation.x = -0.2; g.add(eyepiece);
+  // Eyepiece lens
+  const eyeLens = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.01, 16), matGlass);
+  eyeLens.position.set(0, 0.53, 0.07); eyeLens.rotation.x = -0.2; g.add(eyeLens);
+  // Objective turret
+  const turret = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.04, 16), matSteel);
+  turret.position.set(0, 0.35, 0.05); g.add(turret);
+  // Objective lenses (3)
+  for (let i = 0; i < 3; i++) {
+    const angle = (i / 3) * Math.PI * 2;
+    const lens = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.025, 0.06, 12), matDarkSteel);
+    lens.position.set(Math.cos(angle) * 0.05, 0.3, 0.05 + Math.sin(angle) * 0.05);
+    g.add(lens);
+  }
+  // Stage
+  const stage = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.02, 0.12), matSteel);
+  stage.position.set(0, 0.18, 0.05); g.add(stage);
+  // Stage hole (specimen)
+  const specHole = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.005, 16), matGlass);
+  specHole.position.set(0, 0.19, 0.05); g.add(specHole);
+  // Focus knobs
+  const knob1 = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.04, 16), matDarkSteel);
+  knob1.rotation.z = Math.PI / 2; knob1.position.set(0.12, 0.15, 0.05); g.add(knob1);
+  const knob2 = knob1.clone(); knob2.position.set(-0.12, 0.15, 0.05); g.add(knob2);
+  return g;
+}
+
+function buildIncubator() {
+  const g = new THREE.Group();
+  // Body
+  const body = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.0, 0.7), matWhite);
+  body.position.y = 0.5; body.castShadow = true; g.add(body);
+  // Door (glass front)
+  const door = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.7, 0.02), matGlass);
+  door.position.set(0, 0.55, 0.36); g.add(door);
+  // Door frame
+  const frame = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.75, 0.03), matDarkSteel);
+  frame.position.set(0, 0.55, 0.355); g.add(frame);
+  // Inner shelves
+  for (let i = 0; i < 3; i++) {
+    const shelf = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.01, 0.3), matSteel);
+    shelf.position.set(0, 0.3 + i * 0.2, 0.2); g.add(shelf);
+  }
+  // Control panel
+  const panel = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.15, 0.03), matDarkSteel);
+  panel.position.set(0, 0.9, 0.365); g.add(panel);
+  // Display
+  const display = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.08, 0.01), matDisplay);
+  display.position.set(0, 0.9, 0.375); g.add(display);
+  // Temp sensor probe
+  const probe = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.1, 8), matRed);
+  probe.position.set(0.2, 0.7, 0.2); g.add(probe);
+  // Feet
+  for (let x = -1; x <= 1; x += 2) for (let z = -1; z <= 1; z += 2) {
+    const foot = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.04, 8), matDarkSteel);
+    foot.position.set(x * 0.3, 0.02, z * 0.3); g.add(foot);
+  }
+  return g;
+}
+
+function buildFumeHood() {
+  const g = new THREE.Group();
+  // Base cabinet
+  const base = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.5, 0.8), matWhite);
+  base.position.y = 0.25; base.castShadow = true; g.add(base);
+  // Work surface
+  const surface = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.03, 0.75), matDarkSteel);
+  surface.position.y = 0.515; g.add(surface);
+  // Side walls (glass)
+  const wallL = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.7, 0.7), matGlass);
+  wallL.position.set(-0.73, 0.87, 0); g.add(wallL);
+  const wallR = wallL.clone(); wallR.position.set(0.73, 0.87, 0); g.add(wallR);
+  // Back wall
+  const wallB = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.7, 0.03), matGlass);
+  wallB.position.set(0, 0.87, -0.38); g.add(wallB);
+  // Sash (front sliding door, glass)
+  const sash = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.5, 0.03), matGlass);
+  sash.position.set(0, 0.8, 0.38); g.add(sash);
+  // Top exhaust
+  const exhaust = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.15, 0.7), matDarkSteel);
+  exhaust.position.set(0, 1.3, 0); g.add(exhaust);
+  // Duct
+  const duct = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.3, 16), matSteel);
+  duct.position.set(0, 1.5, 0); g.add(duct);
+  // Control panel
+  const ctrl = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.1, 0.03), matDarkSteel);
+  ctrl.position.set(-0.5, 1.2, 0.39); g.add(ctrl);
+  const ctrlDisplay = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.06, 0.01), matDisplay);
+  ctrlDisplay.position.set(-0.5, 1.2, 0.4); g.add(ctrlDisplay);
+  // Faucet/tap
+  const tap = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.15, 8), matSteel);
+  tap.rotation.z = Math.PI / 4; tap.position.set(0.5, 0.6, 0.2); g.add(tap);
+  return g;
+}
+
+function buildAutoclave() {
+  const g = new THREE.Group();
+  // Base
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.35, 0.2, 32), matDarkSteel);
+  base.position.y = 0.1; base.castShadow = true; g.add(base);
+  // Chamber (cylinder)
+  const chamber = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.5, 32), matSteel);
+  chamber.position.y = 0.45; chamber.castShadow = true; g.add(chamber);
+  // Door (front, circular)
+  const door = new THREE.Mesh(new THREE.CylinderGeometry(0.27, 0.27, 0.05, 32), matDarkSteel);
+  door.rotation.x = Math.PI / 2; door.position.set(0, 0.45, 0.28); g.add(door);
+  // Door handle
+  const handle = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.02, 8, 24), matSteel);
+  handle.position.set(0, 0.45, 0.31); g.add(handle);
+  // Pressure gauge
+  const gauge = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.03, 16), matSteel);
+  gauge.rotation.x = Math.PI / 2; gauge.position.set(0.15, 0.7, 0.28); g.add(gauge);
+  const gaugeFace = new THREE.Mesh(new THREE.CircleGeometry(0.05, 16), matDisplay);
+  gaugeFace.position.set(0.15, 0.7, 0.295); g.add(gaugeFace);
+  // Display
+  const display = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.05, 0.02), matDisplay);
+  display.position.set(-0.1, 0.7, 0.28); g.add(display);
+  // Safety valve on top
+  const valve = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.08, 8), matRed);
+  valve.position.set(0, 0.74, 0); g.add(valve);
+  return g;
+}
+
+function buildFreezer() {
+  const g = new THREE.Group();
+  // Body
+  const body = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.8, 0.8), matWhite);
+  body.position.y = 0.9; body.castShadow = true; g.add(body);
+  // Door
+  const door = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.5, 0.03), matSteel);
+  door.position.set(0, 0.9, 0.41); g.add(door);
+  // Door handle
+  const handle = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.3, 0.04), matDarkSteel);
+  handle.position.set(0.3, 0.9, 0.43); g.add(handle);
+  // Vent at top
+  const vent = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.1, 0.02), matDarkSteel);
+  vent.position.set(0, 1.7, 0.41); g.add(vent);
+  // Display panel
+  const display = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.08, 0.01), matDisplay);
+  display.position.set(-0.25, 1.65, 0.415); g.add(display);
+  // Temperature label
+  const tempLabel = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.03, 0.01), matRed);
+  tempLabel.position.set(0.15, 1.65, 0.415); g.add(tempLabel);
+  // Compressor unit at bottom back
+  const comp = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.15, 0.3), matDarkSteel);
+  comp.position.set(0, 0.075, -0.2); g.add(comp);
+  // Feet
+  for (let x = -1; x <= 1; x += 2) for (let z = -1; z <= 1; z += 2) {
+    const foot = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.04, 8), matDarkSteel);
+    foot.position.set(x * 0.35, 0.02, z * 0.35); g.add(foot);
+  }
+  return g;
+}
+
+function buildBiosafetyCabinet() {
+  const g = new THREE.Group();
+  // Base cabinet
+  const base = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.4, 0.7), matWhite);
+  base.position.y = 0.2; base.castShadow = true; g.add(base);
+  // Work surface
+  const surface = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.02, 0.6), matSteel);
+  surface.position.y = 0.41; g.add(surface);
+  // Main chamber (glass enclosure)
+  const back = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.8, 0.03), matGlass);
+  back.position.set(0, 0.8, -0.33); g.add(back);
+  const sideL = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.8, 0.6), matGlass);
+  sideL.position.set(-0.65, 0.8, 0); g.add(sideL);
+  const sideR = sideL.clone(); sideR.position.set(0.65, 0.8, 0); g.add(sideR);
+  // Front sash (sliding glass)
+  const sash = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.6, 0.03), matGlass);
+  sash.position.set(0, 0.7, 0.33); g.add(sash);
+  // Top unit (HEPA housing)
+  const top = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.2, 0.7), matDarkSteel);
+  top.position.set(0, 1.3, 0); g.add(top);
+  // Control panel
+  const ctrl = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.12, 0.03), matDarkSteel);
+  ctrl.position.set(0, 1.22, 0.36); g.add(ctrl);
+  const display = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.07, 0.01), matDisplay);
+  display.position.set(0, 1.22, 0.375); g.add(display);
+  // Arm holes (front openings)
+  const holeL = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.03, 16), matDarkSteel);
+  holeL.rotation.x = Math.PI / 2; holeL.position.set(-0.3, 0.5, 0.33); g.add(holeL);
+  const holeR = holeL.clone(); holeR.position.set(0.3, 0.5, 0.33); g.add(holeR);
+  // Fluorescent light indicator
+  const light = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.03, 0.05), matDisplay);
+  light.position.set(0, 1.15, 0.3); g.add(light);
+  return g;
+}
+
+function buildPCR() {
+  const g = new THREE.Group();
+  // Base
+  const base = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.15, 0.4), matDarkSteel);
+  base.position.y = 0.075; base.castShadow = true; g.add(base);
+  // Body
+  const body = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.25, 0.35), matWhite);
+  body.position.y = 0.275; g.add(body);
+  // Lid
+  const lid = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.05, 0.3), matSteel);
+  lid.position.set(0, 0.425, 0); g.add(lid);
+  // Lid handle
+  const handle = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.03, 0.05), matDarkSteel);
+  handle.position.set(0, 0.465, 0); g.add(handle);
+  // Sample block (96-well)
+  const block = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.03, 0.2), matDarkSteel);
+  block.position.set(0, 0.42, 0); g.add(block);
+  // Well dots
+  for (let r = 0; r < 8; r++) for (let c = 0; c < 12; c++) {
+    const well = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.005, 6), matBlue);
+    well.position.set(-0.12 + c * 0.022, 0.437, -0.08 + r * 0.023);
+    g.add(well);
+  }
+  // Display screen
+  const display = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.1, 0.01), matDisplay);
+  display.position.set(0, 0.3, 0.18); g.add(display);
+  // Control buttons
+  for (let i = 0; i < 4; i++) {
+    const btn = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.01, 12), matRed);
+    btn.rotation.x = Math.PI / 2; btn.position.set(-0.1 + i * 0.06, 0.22, 0.18);
+    g.add(btn);
+  }
+  // Heat sink vents on side
+  for (let i = 0; i < 5; i++) {
+    const vent = new THREE.Mesh(new THREE.BoxGeometry(0.005, 0.15, 0.2), matDarkSteel);
+    vent.position.set(0.226, 0.27, -0.08 + i * 0.04); g.add(vent);
+  }
+  return g;
+}
+
+const BUILDERS = {
+  centrifuge: buildCentrifuge,
+  microscope: buildMicroscope,
+  incubator: buildIncubator,
+  fumehood: buildFumeHood,
+  autoclave: buildAutoclave,
+  freezer: buildFreezer,
+  biosafety: buildBiosafetyCabinet,
+  pcr: buildPCR,
+};
+
+const placedItems = [];
+let selectedItem = null;
+const gltfLoader = new GLTFLoader();
+const dracoLoader = new DRACOLoader();
+dracoLoader.setDecoderPath('https://esm.sh/three@0.160.0/examples/jsm/libs/draco/');
+gltfLoader.setDRACOLoader(dracoLoader);
+
+function placeEquipment(type, position) {
+  const def = EQUIPMENT[type];
+  if (!def) return;
+  const builder = BUILDERS[type];
+  if (!builder) return;
+  const mesh = builder();
+  mesh.position.set(position.x, 0, position.z);
+  mesh.traverse(c => { if (c.isMesh) { c.castShadow = true; c.receiveShadow = true; } });
+  mesh.userData = { type, name: def.name, ifcClass: 'IfcFurnishingElement', id: 'eq-' + Date.now() };
+  scene.add(mesh);
+  placedItems.push(mesh);
+  updateModelTree();
+  setStatus('Placed: ' + def.name);
+  return mesh;
+}
+
+document.querySelectorAll('.eq-item').forEach(el => {
+  el.addEventListener('dragstart', (e) => { e.dataTransfer.setData('equipment-type', el.dataset.eq); });
+});
+
+viewport.addEventListener('dragover', (e) => { e.preventDefault(); });
+viewport.addEventListener('drop', (e) => {
+  e.preventDefault();
+  const type = e.dataTransfer.getData('equipment-type');
+  if (!type) return;
+  const rect = viewport.getBoundingClientRect();
+  const m = new THREE.Vector2(
+    ((e.clientX - rect.left) / rect.width) * 2 - 1,
+    -((e.clientY - rect.top) / rect.height) * 2 + 1
+  );
+  const rc = new THREE.Raycaster();
+  rc.setFromCamera(m, camera);
+  const hits = rc.intersectObject(groundPlane);
+  if (hits.length) placeEquipment(type, hits[0].point);
+});
+
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+
+viewport.addEventListener('click', (e) => {
+  const rect = viewport.getBoundingClientRect();
+  mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+  mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+  raycaster.setFromCamera(mouse, camera);
+  const hits = raycaster.intersectObjects(placedItems, true);
+  if (hits.length) {
+    // Find the top-level placed item that owns this mesh
+    let obj = hits[0].object;
+    while (obj.parent && !placedItems.includes(obj)) obj = obj.parent;
+    selectItem(obj);
+  } else selectItem(null);
+});
+
+function selectItem(mesh) {
+  if (selectedItem) {
+    selectedItem.traverse(c => { if (c.isMesh && c.material && c.material.emissive) c.material.emissive.setHex(0x000000); });
+  }
+  selectedItem = mesh || null;
+  if (mesh) {
+    mesh.traverse(c => { if (c.isMesh && c.material && c.material.emissive) c.material.emissive.setHex(0x004466); });
+    showProperties(mesh);
+  } else {
+    document.getElementById('props-panel').classList.remove('show');
+  }
+  updateModelTree();
+}
+
+function showProperties(mesh) {
+  const panel = document.getElementById('props-panel');
+  const content = document.getElementById('props-content');
+  const d = mesh.userData;
+  const box = new THREE.Box3().setFromObject(mesh);
+  const size = new THREE.Vector3(); box.getSize(size);
+  content.innerHTML = '<div class="prop-row"><span class="key">Name</span><span class="val">' + d.name + '</span></div>' +
+    '<div class="prop-row"><span class="key">IFC Class</span><span class="val">' + d.ifcClass + '</span></div>' +
+    '<div class="prop-row"><span class="key">ID</span><span class="val">' + d.id + '</span></div>' +
+    '<div class="prop-row"><span class="key">Width</span><span class="val">' + size.x.toFixed(2) + ' m</span></div>' +
+    '<div class="prop-row"><span class="key">Height</span><span class="val">' + size.y.toFixed(2) + ' m</span></div>' +
+    '<div class="prop-row"><span class="key">Depth</span><span class="val">' + size.z.toFixed(2) + ' m</span></div>' +
+    '<div class="prop-row"><span class="key">Position</span><span class="val">' + mesh.position.x.toFixed(1) + ', ' + mesh.position.z.toFixed(1) + '</span></div>';
+  panel.classList.add('show');
+}
+
+function updateModelTree() {
+  const tree = document.getElementById('model-tree');
+  if (!placedItems.length) {
+    tree.innerHTML = '<div style="color:rgba(255,255,255,0.3);font-size:11px;padding:8px">No items placed</div>';
+    return;
+  }
+  tree.innerHTML = placedItems.map(item =>
+    '<div class="tree-item ' + (selectedItem === item ? 'selected' : '') + '" data-id="' + item.userData.id + '">' +
+    (EQUIPMENT[item.userData.type] ? EQUIPMENT[item.userData.type].name : item.userData.name) + '</div>'
+  ).join('');
+  tree.querySelectorAll('.tree-item').forEach(el => {
+    el.onclick = () => {
+      const item = placedItems.find(i => i.userData.id === el.dataset.id);
+      if (item) selectItem(item);
+    };
+  });
+}
+
+document.querySelectorAll('.vp-btn').forEach(btn => {
+  btn.onclick = () => {
+    const mode = btn.dataset.mode;
+    if (mode === 'grid') { gridHelper.visible = !gridHelper.visible; btn.classList.toggle('active'); return; }
+    if (mode === 'export') { exportIFC(); return; }
+    if (mode === 'export-glb') { exportGLB(); return; }
+    if (mode === 'cost') { toggleCostPanel(); return; }
+    document.querySelectorAll('.vp-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    setStatus('Mode: ' + mode);
+  };
+});
+
+function exportIFC() {
+  if (!placedItems.length) { setStatus('Nothing to export'); return; }
+  let ifc = 'ISO-10303-21;\nHEADER;\nFILE_DESCRIPTION((\'Lab Designer Export\'),\'2;1\');\n';
+  ifc += 'FILE_NAME(\'lab-design.ifc\',\'' + new Date().toISOString() + '\',(\'Lab Designer\'),(\'ThatOpen\'),\'web-ifc\',\'\');\n';
+  ifc += 'FILE_SCHEMA((\'IFC4\'));\nENDSEC;\nDATA;\n';
+  let n = 1;
+  placedItems.forEach((item) => {
+    const d = item.userData;
+    ifc += '#' + (n++) + '=IFCFURNISHINGELEMENT(\'' + d.id + '\',\'' + d.name + '\',#,$,$,$,$,$,$,$,.NOTDEFINED.,$,#);\n';
+  });
+  ifc += 'ENDSEC;\nEND-ISO-10303-21;';
+  const blob = new Blob([ifc], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'lab-design.ifc'; a.click();
+  URL.revokeObjectURL(url);
+  setStatus('Exported lab-design.ifc');
+}
+
+function exportGLB() {
+  if (!placedItems.length) { setStatus('Nothing to export'); return; }
+  setStatus('Exporting GLB...');
+  const exportScene = new THREE.Scene();
+  placedItems.forEach(item => {
+    const clone = item.clone(true);
+    clone.position.copy(item.position);
+    exportScene.add(clone);
+  });
+  const exporter = new GLTFExporter();
+  exporter.parse(exportScene, (result) => {
+    const blob = new Blob([result], { type: 'application/octet-stream' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'lab-design.glb'; a.click();
+    URL.revokeObjectURL(url);
+    setStatus('Exported lab-design.glb');
+  }, (err) => { setStatus('GLB export failed: ' + err); }, { binary: true });
+}
+
+const uploadZone = document.getElementById('ifc-upload-zone');
+const fileInput = document.getElementById('ifc-file-input');
+
+async function loadGLBFile(file) {
+  const overlay = document.getElementById('loading-overlay');
+  overlay.classList.add('show');
+  setStatus('Loading ' + file.name + '...');
+  try {
+    const url = URL.createObjectURL(file);
+    const result = await gltfLoader.loadAsync(url);
+    URL.revokeObjectURL(url);
+    const model = result.scene;
+    // Auto-scale to reasonable size
+    const box = new THREE.Box3().setFromObject(model);
+    const size = new THREE.Vector3(); box.getSize(size);
+    const maxDim = Math.max(size.x, size.y, size.z);
+    if (maxDim > 0) {
+      const scale = 2.0 / maxDim;
+      model.scale.setScalar(scale);
+    }
+    // Place at center
+    model.position.set(0, 0, 0);
+    model.traverse(c => { if (c.isMesh) { c.castShadow = true; c.receiveShadow = true; } });
+    model.userData = { type: 'gltf', name: file.name, ifcClass: 'ImportedModel', id: 'glb-' + Date.now() };
+    scene.add(model);
+    placedItems.push(model);
+    updateModelTree();
+    setStatus('Loaded: ' + file.name);
+  } catch (e) {
+    setStatus('GLB load failed: ' + e.message);
+    console.error(e);
+  } finally {
+    overlay.classList.remove('show');
+  }
+}
+
+async function loadIFCFile(file) {
+  const overlay = document.getElementById('loading-overlay');
+  overlay.classList.add('show');
+  setStatus('Loading web-ifc...');
+  try {
+    const mod = await import('https://esm.sh/web-ifc@0.0.59');
+    const IfcAPI = mod.IfcAPI || mod.default.IfcAPI;
+    const ifcApi = new IfcAPI();
+    await ifcApi.Init();
+    const buffer = await file.arrayBuffer();
+    const modelID = ifcApi.OpenModel(new Uint8Array(buffer));
+    setStatus('IFC model loaded: ' + file.name);
+    const maxId = ifcApi.GetMaxExpressID(modelID);
+    const elements = [];
+    for (let i = 1; i <= Math.min(maxId, 5000); i++) {
+      try {
+        const elem = ifcApi.GetLine(modelID, i);
+        if (elem && elem.type) elements.push(elem);
+      } catch {}
+    }
+    const classes = {};
+    elements.forEach(e => {
+      const cls = e.constructor ? e.constructor.name : 'Unknown';
+      if (!classes[cls]) classes[cls] = [];
+      classes[cls].push(e);
+    });
+    const tree = document.getElementById('model-tree');
+    tree.innerHTML = Object.entries(classes).map(function(entry) {
+      var cls = entry[0], items = entry[1];
+      return '<div class="tree-item" style="font-weight:600">' + cls + ' (' + items.length + ')</div>' +
+        items.slice(0, 10).map(function(item) {
+          return '<div class="tree-item" style="padding-left:20px" data-id="' + item.expressID + '">' +
+            (item.Name && item.Name.value ? item.Name.value : 'Unnamed') + '</div>';
+        }).join('');
+    }).join('');
+    setStatus('Loaded ' + elements.length + ' elements from ' + file.name);
+    ifcApi.CloseModel(modelID);
+  } catch (e) {
+    setStatus('IFC load failed: ' + e.message);
+    console.error(e);
+  } finally {
+    overlay.classList.remove('show');
+  }
+}
+
+uploadZone.addEventListener('dragover', function(e) { e.preventDefault(); uploadZone.classList.add('dragover'); });
+uploadZone.addEventListener('dragleave', function() { uploadZone.classList.remove('dragover'); });
+uploadZone.addEventListener('drop', function(e) {
+  e.preventDefault();
+  uploadZone.classList.remove('dragover');
+  var file = e.dataTransfer.files[0];
+  if (!file) return;
+  if (file.name.match(/\.(glb|gltf)$/i)) loadGLBFile(file);
+  else if (file.name.match(/\.ifc$/i)) loadIFCFile(file);
+  else setStatus('Unsupported format. Use .glb, .gltf, or .ifc');
+});
+fileInput.addEventListener('change', function(e) {
+  var file = e.target.files[0];
+  if (!file) return;
+  if (file.name.match(/\.(glb|gltf)$/i)) loadGLBFile(file);
+  else if (file.name.match(/\.ifc$/i)) loadIFCFile(file);
+  else setStatus('Unsupported format. Use .glb, .gltf, or .ifc');
+});
+
+window.addEventListener('resize', function() {
+  camera.aspect = viewport.clientWidth / viewport.clientHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(viewport.clientWidth, viewport.clientHeight);
+});
+
+function animate() { requestAnimationFrame(animate); controls.update(); renderer.render(scene, camera); }
+animate();
+
+function setStatus(msg) { document.getElementById('status-bar').textContent = msg; }
+
+// ── BUDGET CALCULATOR ─────────────────────────
+let costPanelOpen = false;
+let costView = 'all';
+
+function toggleCostPanel() {
+  costPanelOpen = !costPanelOpen;
+  const panel = document.getElementById('cost-panel');
+  const btn = document.getElementById('btn-cost');
+  if (costPanelOpen) {
+    panel.classList.add('open');
+    btn.classList.add('active');
+    updateCostPanel();
+  } else {
+    panel.classList.remove('open');
+    btn.classList.remove('active');
+  }
+}
+
+document.querySelectorAll('.cost-toggle button').forEach(b => {
+  b.onclick = () => {
+    document.querySelectorAll('.cost-toggle button').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    costView = b.dataset.view;
+    updateCostPanel();
+  };
+});
+
+function fmt$(n) { return '$' + n.toLocaleString(); }
+
+function updateCostPanel() {
+  const summary = document.getElementById('cost-summary');
+  const table = document.getElementById('cost-table');
+  const empty = document.getElementById('cost-empty');
+
+  // Count equipment by type
+  const counts = {};
+  placedItems.forEach(item => {
+    const t = item.userData.type;
+    if (t && EQUIPMENT[t]) {
+      counts[t] = (counts[t] || 0) + 1;
+    }
+  });
+
+  const types = Object.keys(counts);
+  if (!types.length) {
+    summary.innerHTML = '';
+    table.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  let diyTotal = 0, comTotal = 0;
+  types.forEach(t => {
+    const eq = EQUIPMENT[t];
+    diyTotal += eq.diy * counts[t];
+    comTotal += eq.com * counts[t];
+  });
+  const savings = comTotal - diyTotal;
+  const savingsPct = comTotal > 0 ? Math.round((savings / comTotal) * 100) : 0;
+
+  // Summary cards
+  summary.innerHTML =
+    '<div class="cost-card diy"><div class="label">DIY Total</div><div class="value">' + fmt$(diyTotal) + '</div>' +
+    '<div class="savings">' + types.length + ' item type(s)</div></div>' +
+    '<div class="cost-card com"><div class="label">Commercial</div><div class="value">' + fmt$(comTotal) + '</div>' +
+    '<div class="savings">Save ' + fmt$(savings) + ' (' + savingsPct + '%)</div></div>';
+
+  // Table
+  let rows = '<thead><tr><th>Equipment</th><th>Qty</th><th>DIY</th><th>Commercial</th></tr></thead><tbody>';
+  types.forEach(t => {
+    const eq = EQUIPMENT[t];
+    const qty = counts[t];
+    const showDiy = costView === 'all' || costView === 'diy';
+    const showCom = costView === 'all' || costView === 'com';
+    rows += '<tr>' +
+      '<td>' + eq.name + '<br><span class="qty">' + (costView !== 'diy' ? eq.comBrand : eq.diyDesc) + '</span></td>' +
+      '<td>' + qty + '</td>' +
+      '<td class="diy-price">' + (showDiy ? fmt$(eq.diy * qty) : '—') + '</td>' +
+      '<td class="com-price">' + (showCom ? fmt$(eq.com * qty) : '—') + '</td>' +
+    '</tr>';
+  });
+  rows += '<tr style="border-top:2px solid rgba(255,255,255,0.1)"><td><strong>Total</strong></td><td></td>' +
+    '<td class="diy-price"><strong>' + (costView !== 'com' ? fmt$(diyTotal) : '—') + '</strong></td>' +
+    '<td class="com-price"><strong>' + (costView !== 'diy' ? fmt$(comTotal) : '—') + '</strong></td></tr>';
+  rows += '</tbody>';
+  table.innerHTML = rows;
+}
+
+// Update cost panel when items change
+const origPlaceEquipment = placeEquipment;
+placeEquipment = function(type, position) {
+  const result = origPlaceEquipment(type, position);
+  if (costPanelOpen) updateCostPanel();
+  return result;
+};
+
+// ── SUPABASE INIT ─────────────────────────────
+const SUPABASE_URL = 'https://fltnctwslizjueytwqir.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZsdG5jdHdzbGl6anVleXR3cWlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxMzA0NDksImV4cCI6MjA5NDcwNjQ0OX0.kgxowNqCa1KgDRVybJoWdfy_UK9uP2YQcynonqpDsPU';
+let sbClient = null;
+let currentUser = null;
+let currentLayoutId = null;
+let _labNameCache = {};
+let _labPunchiesCache = [];
+let _labPunchyVotesCache = {};
+
+async function initLabSupabase() {
+  try {
+    const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
+    sbClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const { data: { session } } = await sbClient.auth.getSession();
+    if (session) { currentUser = session.user; }
+    sbClient.auth.onAuthStateChange((_e, session) => {
+      currentUser = session?.user || null;
+    });
+  } catch(e) { console.warn('Lab Supabase init failed:', e); }
+}
+
+async function fetchLabNames(userIds) {
+  if (!sbClient) return;
+  const missing = userIds.filter(id => id && !_labNameCache[id]);
+  if (missing.length === 0) return;
+  try {
+    const { data } = await sbClient.from('mindmap_profiles')
+      .select('id, display_name, username').in('id', missing);
+    if (data) data.forEach(p => { _labNameCache[p.id] = p.display_name || p.username || 'Unknown'; });
+  } catch(e) {}
+}
+function labAuthorName(uid) { return _labNameCache[uid] || 'Unknown'; }
+
+// ── SAVE / LOAD LAYOUTS ──────────────────────
+const LAYOUTS_KEY = 'lab_layouts';
+
+function getLayoutData() {
+  return placedItems.map(item => ({
+    type: item.userData.type,
+    name: item.userData.name,
+    position: { x: item.position.x, z: item.position.z }
+  }));
+}
+
+function computeLayoutCost() {
+  let diy = 0, com = 0;
+  placedItems.forEach(item => {
+    const eq = EQUIPMENT[item.userData.type];
+    if (eq) { diy += eq.diy; com += eq.com; }
+  });
+  return { diy, com };
+}
+
+function saveLayoutDialog() {
+  const existing = document.querySelector('.save-layout-dialog');
+  if (existing) existing.remove();
+  const dlg = document.createElement('div');
+  dlg.className = 'versus-modal save-layout-dialog';
+  dlg.style.borderColor = 'rgba(0,212,255,0.3)';
+  dlg.innerHTML = `
+    <h2>💾 Save Layout</h2>
+    <div style="margin-bottom:16px">
+      <label style="font-size:10px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:6px">Layout Name</label>
+      <input type="text" id="layout-name-input" placeholder="e.g. My Bio Lab Setup" style="width:100%;padding:10px;background:rgba(255,255,255,0.04);color:#fff;border:1px solid rgba(255,255,255,0.1);border-radius:8px;font-size:12px" />
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="vp-btn" onclick="this.closest('.save-layout-dialog').remove()">Cancel</button>
+      <button class="vp-btn" style="border-color:rgba(46,204,113,0.4);background:rgba(46,204,113,0.08);color:#2ecc71" id="layout-save-btn">Save</button>
+    </div>
+  `;
+  document.body.appendChild(dlg);
+  dlg.querySelector('#layout-name-input').focus();
+  dlg.querySelector('#layout-save-btn').onclick = async () => {
+    const name = dlg.querySelector('#layout-name-input').value.trim();
+    if (!name) return;
+    await saveLayout(name);
+    dlg.remove();
+  };
+  setTimeout(() => {
+    document.addEventListener('click', function closeDlg(e) {
+      if (!dlg.contains(e.target)) { dlg.remove(); document.removeEventListener('click', closeDlg); }
+    });
+  }, 10);
+}
+
+async function saveLayout(name) {
+  const layoutData = getLayoutData();
+  const { diy, com } = computeLayoutCost();
+  const id = 'layout-' + Date.now();
+  const layout = { id, name, layoutData, diyCost: diy, comCost: com, created: new Date().toISOString() };
+
+  const local = JSON.parse(localStorage.getItem(LAYOUTS_KEY) || '[]');
+  local.push(layout);
+  localStorage.setItem(LAYOUTS_KEY, JSON.stringify(local));
+
+  if (sbClient && currentUser) {
+    try {
+      const { data, error } = await sbClient.from('lab_layouts').insert({
+        id, user_id: currentUser.id, name, layout_data: layoutData,
+        diy_cost: diy, com_cost: com
+      }).select('id').single();
+      if (data) currentLayoutId = data.id;
+    } catch(e) { console.warn('Layout save to Supabase failed:', e); }
+  }
+  currentLayoutId = id;
+  setStatus('Layout saved: ' + name);
+}
+
+async function loadLayoutDialog() {
+  const existing = document.querySelector('.load-layout-dialog');
+  if (existing) existing.remove();
+  const dlg = document.createElement('div');
+  dlg.className = 'versus-modal load-layout-dialog';
+  dlg.style.borderColor = 'rgba(0,212,255,0.3)';
+  dlg.style.minWidth = '500px';
+  dlg.innerHTML = '<h2>📂 Load Layout</h2><div id="layout-list-container" style="max-height:400px;overflow-y:auto"></div>' +
+    '<div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px"><button class="vp-btn" onclick="this.closest(\'.load-layout-dialog\').remove()">Close</button></div>';
+  document.body.appendChild(dlg);
+
+  const container = dlg.querySelector('#layout-list-container');
+  const local = JSON.parse(localStorage.getItem(LAYOUTS_KEY) || '[]');
+  let remoteLayouts = [];
+  if (sbClient) {
+    try {
+      const { data } = await sbClient.from('lab_layouts').select('id, name, user_id, diy_cost, com_cost, created_at').order('created_at', { ascending: false });
+      if (data) {
+        remoteLayouts = data;
+        const uids = [...new Set(data.map(d => d.user_id).filter(Boolean))];
+        await fetchLabNames(uids);
+      }
+    } catch(e) {}
+  }
+
+  const all = [...remoteLayouts.map(r => ({ ...r, remote: true })), ...local.map(l => ({ ...l, remote: false }))];
+  if (!all.length) {
+    container.innerHTML = '<div style="text-align:center;padding:30px;color:rgba(255,255,255,0.2);font-size:12px">No saved layouts yet</div>';
+  } else {
+    container.innerHTML = all.map(l => {
+      const diy = l.diy_cost || l.diyCost || 0;
+      const com = l.com_cost || l.comCost || 0;
+      const author = l.user_id ? labAuthorName(l.user_id) : 'You (local)';
+      return '<div class="layout-item">' +
+        '<div><div class="layout-name">' + (l.name || 'Untitled') + '</div>' +
+        '<div class="layout-meta">' + (l.remote ? '☁️' : '💾') + ' · ' + author + ' · DIY $' + diy + ' · Com $' + com + '</div></div>' +
+        '<button onclick="loadLayout(\'' + (l.id) + '\',' + (l.remote ? 'true' : 'false') + ')">Load</button>' +
+      '</div>';
+    }).join('');
+  }
+
+  setTimeout(() => {
+    document.addEventListener('click', function closeDlg(e) {
+      if (!dlg.contains(e.target)) { dlg.remove(); document.removeEventListener('click', closeDlg); }
+    });
+  }, 10);
+}
+
+window.loadLayout = async function(id, isRemote) {
+  let layout;
+  if (isRemote && sbClient) {
+    try {
+      const { data } = await sbClient.from('lab_layouts').select('*').eq('id', id).single();
+      layout = data;
+    } catch(e) { console.warn('Remote load failed:', e); }
+  } else {
+    const local = JSON.parse(localStorage.getItem(LAYOUTS_KEY) || '[]');
+    layout = local.find(l => l.id === id);
+  }
+  if (!layout) return;
+
+  while (placedItems.length > 0) {
+    const item = placedItems.pop();
+    scene.remove(item);
+  }
+  updateModelTree();
+
+  const items = layout.layout_data || layout.layoutData || [];
+  items.forEach(item => {
+    placeEquipment(item.type, { x: item.position.x, z: item.position.z });
+  });
+
+  currentLayoutId = id;
+  document.getElementById('punchies-layout-name').textContent = layout.name || 'Untitled';
+  document.querySelector('.load-layout-dialog')?.remove();
+  setStatus('Loaded: ' + (layout.name || 'Untitled'));
+  if (costPanelOpen) updateCostPanel();
+  await loadLabPunchies(id);
+  renderLabPunchies();
+};
+
+// ── VERSUS (compare two layouts) ─────────────
+function openVersusModal() {
+  const existing = document.querySelector('.versus-modal:not(.save-layout-dialog):not(.load-layout-dialog)');
+  if (existing) existing.remove();
+  const local = JSON.parse(localStorage.getItem(LAYOUTS_KEY) || '[]');
+  if (local.length < 1 && placedItems.length < 1) {
+    setStatus('Need at least one saved layout to compare');
+    return;
+  }
+
+  const current = { name: 'Current Scene', diyCost: computeLayoutCost().diy, comCost: computeLayoutCost().com, items: placedItems.length };
+  const saved = local.map(l => ({ id: l.id, name: l.name, diyCost: l.diyCost || 0, comCost: l.comCost || 0, items: (l.layoutData || []).length }));
+
+  const dlg = document.createElement('div');
+  dlg.className = 'versus-modal';
+  dlg.innerHTML = `
+    <h2>⚔ Layout Versus</h2>
+    <div class="versus-grid" id="versus-grid"></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
+      <button class="vp-btn" onclick="this.closest('.versus-modal').remove()">Close</button>
+    </div>
+  `;
+  document.body.appendChild(dlg);
+
+  const grid = dlg.querySelector('#versus-grid');
+  const all = [{ ...current, isCurrent: true }, ...saved];
+
+  grid.innerHTML = all.map(l => {
+    const savings = l.comCost - l.diyCost;
+    const pct = l.comCost > 0 ? Math.round((savings / l.comCost) * 100) : 0;
+    return '<div class="versus-col">' +
+      '<h3>' + (l.isCurrent ? '🔵 ' : '📋 ') + l.name + '</h3>' +
+      '<div class="versus-stat"><span class="key">Items</span><span class="val">' + l.items + '</span></div>' +
+      '<div class="versus-stat"><span class="key">DIY Cost</span><span class="val" style="color:#2ecc71">$' + l.diyCost.toLocaleString() + '</span></div>' +
+      '<div class="versus-stat"><span class="key">Commercial</span><span class="val" style="color:#e74c3c">$' + l.comCost.toLocaleString() + '</span></div>' +
+      '<div class="versus-stat"><span class="key">Savings</span><span class="val">$' + savings.toLocaleString() + ' (' + pct + '%)</span></div>' +
+    '</div>';
+  }).join('');
+
+  setTimeout(() => {
+    document.addEventListener('click', function closeVs(e) {
+      if (!dlg.contains(e.target)) { dlg.remove(); document.removeEventListener('click', closeVs); }
+    });
+  }, 10);
+}
+
+// ── LAB PUNCHIES ─────────────────────────────
+let punchiesPanelOpen = false;
+
+function togglePunchiesPanel() {
+  punchiesPanelOpen = !punchiesPanelOpen;
+  const panel = document.getElementById('punchies-panel');
+  const btn = document.getElementById('btn-punchies');
+  if (punchiesPanelOpen) {
+    panel.classList.add('open');
+    btn.classList.add('active');
+    if (currentLayoutId) { loadLabPunchies(currentLayoutId).then(() => renderLabPunchies()); }
+    else renderLabPunchies();
+  } else {
+    panel.classList.remove('open');
+    btn.classList.remove('active');
+  }
+}
+
+async function loadLabPunchies(layoutId) {
+  if (!sbClient) return;
+  try {
+    const { data } = await sbClient.from('punchies')
+      .select('id, user_id, stance, content, vote_total, created_at')
+      .eq('target_type', 'lab').eq('target_id', layoutId)
+      .order('vote_total', { ascending: false });
+    if (data) {
+      const uids = [...new Set(data.map(d => d.user_id).filter(Boolean))];
+      await fetchLabNames(uids);
+      _labPunchiesCache = data;
+    }
+    if (currentUser) {
+      const ids = (_labPunchiesCache || []).map(d => d.id);
+      if (ids.length > 0) {
+        const { data: votes } = await sbClient.from('punchie_votes')
+          .select('punchie_id, vote').eq('user_id', currentUser.id).in('punchie_id', ids);
+        if (votes) votes.forEach(v => { _labPunchyVotesCache[v.punchie_id] = v.vote; });
+      }
+    }
+  } catch(e) { console.warn('Lab punchies load failed:', e); }
+}
+
+function escapeHtmlLab(str) { const d = document.createElement('div'); d.textContent = str; return d.innerHTML; }
+
+function renderLabPunchies() {
+  const container = document.getElementById('punchies-content');
+  if (!container) return;
+  if (!currentLayoutId) {
+    container.innerHTML = '<div class="punchy-login-hint">Save or load a layout first to add punchies</div>';
+    return;
+  }
+  const pros = _labPunchiesCache.filter(p => p.stance === 'pro');
+  const cons = _labPunchiesCache.filter(p => p.stance === 'con');
+
+  const renderItem = (p) => {
+    const myVote = _labPunchyVotesCache[p.id] || 0;
+    return '<div class="punchy-item">' +
+      '<div class="punchy-author">' + labAuthorName(p.user_id) + '</div>' +
+      '<div class="punchy-text">' + escapeHtmlLab(p.content) + '</div>' +
+      '<div class="punchy-votes">' +
+        '<span class="punchy-vote-btn up' + (myVote > 0 ? ' active' : '') + '" onclick="voteLabPunchy(' + p.id + ',1)">👍</span>' +
+        '<span class="punchy-vote-count">' + (p.vote_total || 0) + '</span>' +
+        '<span class="punchy-vote-btn down' + (myVote < 0 ? ' active' : '') + '" onclick="voteLabPunchy(' + p.id + ',-1)">👎</span>' +
+      '</div></div>';
+  };
+
+  const addForm = currentUser ?
+    '<div class="punchy-add"><input type="text" id="lab-punchy-input" placeholder="Add a punchy..." />' +
+    '<button class="add-pro" onclick="addLabPunchy(\'pro\')">+ Pro</button>' +
+    '<button class="add-con" onclick="addLabPunchy(\'con\')">+ Con</button></div>'
+    : '<div class="punchy-login-hint">Sign in to add punchies and vote</div>';
+
+  container.innerHTML =
+    '<div class="punchies-cols">' +
+      '<div class="punchies-col pro"><div class="punchies-col-title">✅ Pros</div>' +
+        (pros.length ? pros.map(renderItem).join('') : '<div style="font-size:10px;color:rgba(255,255,255,0.2);padding:4px">No pros yet</div>') +
+      '</div>' +
+      '<div class="punchies-col con"><div class="punchies-col-title">❌ Cons</div>' +
+        (cons.length ? cons.map(renderItem).join('') : '<div style="font-size:10px;color:rgba(255,255,255,0.2);padding:4px">No cons yet</div>') +
+      '</div>' +
+    '</div>' + addForm;
+}
+
+window.addLabPunchy = async function(stance) {
+  if (!currentUser || !currentLayoutId || !sbClient) { setStatus('Sign in and load a layout first'); return; }
+  const input = document.getElementById('lab-punchy-input');
+  if (!input || !input.value.trim()) return;
+  const text = input.value.trim();
+  try {
+    const { data, error } = await sbClient.from('punchies').insert({
+      user_id: currentUser.id, target_type: 'lab', target_id: currentLayoutId,
+      stance, content: text, vote_total: 0
+    }).select('id, user_id, stance, content, vote_total, created_at').single();
+    if (error) throw error;
+    if (data) {
+      _labNameCache[data.user_id] = currentUser.user_metadata?.full_name || currentUser.email?.split('@')[0] || 'You';
+      _labPunchiesCache.unshift(data);
+      try {
+        const { data: layout } = await sbClient.from('lab_layouts')
+          .select('user_id').eq('id', currentLayoutId).maybeSingle();
+        const ownerId = layout?.user_id;
+        if (ownerId && ownerId !== currentUser.id) {
+          await sbClient.from('mindmap_notifications').insert({
+            user_id: ownerId, type: 'punchy',
+            message: '🥊 New ' + stance + ' punchy on lab layout: ' + text.slice(0, 60),
+            data: { target_type: 'lab', target_id: currentLayoutId, stance }
+          });
+        }
+      } catch(e) {}
+      input.value = '';
+      renderLabPunchies();
+    }
+  } catch(e) { console.warn('Add lab punchy failed:', e); setStatus('Failed to add punchy'); }
+};
+
+window.voteLabPunchy = async function(punchieId, delta) {
+  if (!currentUser || !sbClient) { setStatus('Sign in to vote'); return; }
+  const current = _labPunchyVotesCache[punchieId] || 0;
+  const next = Math.max(-2, Math.min(2, current + delta));
+  if (next === current) return;
+  try {
+    await sbClient.from('punchie_votes').upsert({
+      punchie_id: punchieId, user_id: currentUser.id, vote: next
+    }, { onConflict: 'punchie_id,user_id' });
+    _labPunchyVotesCache[punchieId] = next;
+    const p = _labPunchiesCache.find(x => x.id === punchieId);
+    if (p) p.vote_total = (p.vote_total || 0) + delta;
+    renderLabPunchies();
+  } catch(e) { console.warn('Vote failed:', e); }
+};
+
+// ── BUTTON WIRING ────────────────────────────
+document.getElementById('btn-save-layout').onclick = saveLayoutDialog;
+document.getElementById('btn-load-layout').onclick = loadLayoutDialog;
+document.getElementById('btn-versus').onclick = openVersusModal;
+document.getElementById('btn-punchies').onclick = togglePunchiesPanel;
+
+// ── INIT ─────────────────────────────────────
+initLabSupabase();
+</script>
+</body>
+</html>
