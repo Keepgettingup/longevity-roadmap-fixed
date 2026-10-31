@@ -54,6 +54,40 @@ li{margin-left:18px;margin-bottom:6px}
 </div>
 </section>
 
+<section id="pitch-video">
+<div class="wrap">
+  <h2>🎬 Der Pitch in 1 Video</h2>
+  <div style="display:flex;gap:8px;margin:16px 0">
+    <button class="btn" id="vid-de" onclick="setPitchLang('de')">Deutsch</button>
+    <button class="btn sec" id="vid-en" onclick="setPitchLang('en')">English</button>
+  </div>
+  <video id="pitch-player" controls playsinline preload="metadata" style="width:100%;border-radius:14px;border:1px solid rgba(255,255,255,0.08);background:#000">
+    <source src="media/pitch-de.mp4" type="video/mp4">
+  </video>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px">
+    <a class="btn" id="tg-share" target="_blank" rel="noopener">✈ Auf Telegram teilen</a>
+    <a class="btn sec" href="https://t.me/crawlyDbot?start=pitch" target="_blank" rel="noopener">🐟 Fragen an Makrele</a>
+  </div>
+</div>
+</section>
+<script>
+const PITCH_URL = 'https://gs-commie.uk/pitch';
+const PITCH_TEXT = {
+  de: 'Tausche deine Idee — der Gleichschalt-Kommie Pitch:',
+  en: 'Trade your idea — the Gleichschalt-Kommie pitch:'
+};
+function setPitchLang(lang) {
+  const player = document.getElementById('pitch-player');
+  player.src = 'media/pitch-' + lang + '.mp4';
+  player.load();
+  document.getElementById('vid-de').className = lang === 'de' ? 'btn' : 'btn sec';
+  document.getElementById('vid-en').className = lang === 'en' ? 'btn' : 'btn sec';
+  document.getElementById('tg-share').href = 'https://t.me/share/url?url=' +
+    encodeURIComponent(PITCH_URL) + '&text=' + encodeURIComponent(PITCH_TEXT[lang]);
+}
+setPitchLang((navigator.language || 'de').toLowerCase().startsWith('de') ? 'de' : 'en');
+</script>
+
 <section>
 <div class="wrap">
   <h2>Die Regeln des Systems</h2>
