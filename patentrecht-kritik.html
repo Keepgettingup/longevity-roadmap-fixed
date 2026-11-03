@@ -23,43 +23,51 @@ a{color:#00d4ff}
 .back{display:inline-block;margin-bottom:22px;font-size:12px;color:#00d4ff;text-decoration:none}
 .back:hover{text-decoration:underline}
 footer{padding:32px 0;font-size:11px;color:rgba(255,255,255,0.3)}
+.lang-switch{position:fixed;top:14px;right:14px;z-index:50;display:flex;border:1px solid rgba(245,197,66,0.4);border-radius:20px;overflow:hidden;background:rgba(7,7,26,0.85);backdrop-filter:blur(6px)}
+.lang-switch button{padding:6px 14px;border:0;background:transparent;color:rgba(255,255,255,0.55);font-size:12px;font-weight:700;letter-spacing:1px;cursor:pointer}
+.lang-switch button.on{background:rgba(245,197,66,0.18);color:#f5c542}
 </style>
 </head>
 <body>
 
+<div class="lang-switch" role="group" aria-label="Sprache / Language">
+  <button id="lang-de" onclick="setLang('de')">DE</button>
+  <button id="lang-en" onclick="setLang('en')">EN</button>
+</div>
+
 <section>
 <div class="wrap">
-  <a class="back" href="pitch.html">← zurück zum Ideentausch-Pitch</a>
-  <div class="tag">gs-commie.uk · Kritik</div>
-  <h1>Themen zum <span class="gold">Patentrecht</span></h1>
-  <p class="sub">Warum Wissensrestriktion nur in seltenen Spezialfällen gerechtfertigt ist — und welche Fragen sich an Institute, Rechtsstaat und Berater stellen.</p>
+  <a class="back" href="pitch.html" data-en="← back to the idea-exchange pitch">← zurück zum Ideentausch-Pitch</a>
+  <div class="tag" data-en="gs-commie.uk · Critique">gs-commie.uk · Kritik</div>
+  <h1 data-en="Topics on <span class='gold'>patent law</span>">Themen zum <span class="gold">Patentrecht</span></h1>
+  <p class="sub" data-en="Why restricting knowledge is only justified in rare special cases — and which questions this raises for institutes, the rule of law and advisers.">Warum Wissensrestriktion nur in seltenen Spezialfällen gerechtfertigt ist — und welche Fragen sich an Institute, Rechtsstaat und Berater stellen.</p>
 </div>
 </section>
 
 <section>
 <div class="wrap">
-  <h2>Wann darf Wissen zurückgehalten werden?</h2>
+  <h2 data-en="When may knowledge be withheld?">Wann darf Wissen zurückgehalten werden?</h2>
   <div class="card result">
-    <p>Die Idee, dass so etwas wie Firmengeheimnisse gewahrt werden sollten, kann nur <b>zwei Gründe</b> haben:</p>
+    <p data-en="The idea that something like trade secrets should be protected can only have <b>two reasons</b>:">Die Idee, dass so etwas wie Firmengeheimnisse gewahrt werden sollten, kann nur <b>zwei Gründe</b> haben:</p>
     <ul style="margin-top:12px">
-      <li><b>Um den Urheber nachvollziehen zu können</b> — damit er die Wirkung seiner Arbeit überschauen kann: zur monetären Entlohnung einer vielleicht mühevollen, schwer quantifizierbaren, effizienten Selbstoptimierung und Priorisierung; zur Dokumentation bzw. zur soziologischen Analyse, die dieses wohlstandsstärkende Verhalten verursacht hat.</li>
-      <li><b>Um die Kreativität investigativer Arbeit ohne Vorkenntnisse nicht zu drosseln</b> — wenn ich einfach weiß, wie etwas funktioniert, denke ich selbst nicht mehr darüber nach, wie man das Problem lösen könnte. Das kann in einigen Fällen innovatives Denken stören: man sucht nicht irgendeine Lösung, sondern die <b>beste</b> Lösung, ohne unnötige Vorgaben (<b>mentale Diversifizierung</b>). Auch um den Wert einer Technologie besser zu schätzen, Faszination dafür zu entwickeln oder schlicht nicht abzulenken, kann Wissensrestriktion angebracht sein.</li>
+      <li data-en="<b>To be able to trace the originator</b> — so that they can oversee the effect of their work: for the monetary reward of a perhaps laborious, hard-to-quantify, efficient self-optimisation and prioritisation; for documentation or for the sociological analysis of what caused this prosperity-enhancing behaviour."><b>Um den Urheber nachvollziehen zu können</b> — damit er die Wirkung seiner Arbeit überschauen kann: zur monetären Entlohnung einer vielleicht mühevollen, schwer quantifizierbaren, effizienten Selbstoptimierung und Priorisierung; zur Dokumentation bzw. zur soziologischen Analyse, die dieses wohlstandsstärkende Verhalten verursacht hat.</li>
+      <li data-en="<b>So as not to throttle the creativity of investigative work without prior knowledge</b> — if I simply know how something works, I no longer think for myself about how the problem could be solved. In some cases this can disturb innovative thinking: one is not looking for just any solution, but for the <b>best</b> solution, without unnecessary constraints (<b>mental diversification</b>). Restricting knowledge can also be appropriate to better appreciate the value of a technology, to develop a fascination for it, or simply not to distract."><b>Um die Kreativität investigativer Arbeit ohne Vorkenntnisse nicht zu drosseln</b> — wenn ich einfach weiß, wie etwas funktioniert, denke ich selbst nicht mehr darüber nach, wie man das Problem lösen könnte. Das kann in einigen Fällen innovatives Denken stören: man sucht nicht irgendeine Lösung, sondern die <b>beste</b> Lösung, ohne unnötige Vorgaben (<b>mentale Diversifizierung</b>). Auch um den Wert einer Technologie besser zu schätzen, Faszination dafür zu entwickeln oder schlicht nicht abzulenken, kann Wissensrestriktion angebracht sein.</li>
     </ul>
-    <p style="margin-top:12px">Dies stellt aber <b>absolut seltene Spezialfälle</b> dar. <span class="gold">In gut 95% aller Fälle hemmen Patente sowie Firmengeheimnisse den innovativen Fortschritt.</span></p>
+    <p style="margin-top:12px" data-en="These, however, are <b>extremely rare special cases</b>. <span class='gold'>In a good 95% of all cases, patents and trade secrets hinder innovative progress.</span>">Dies stellt aber <b>absolut seltene Spezialfälle</b> dar. <span class="gold">In gut 95% aller Fälle hemmen Patente sowie Firmengeheimnisse den innovativen Fortschritt.</span></p>
   </div>
 </div>
 </section>
 
 <section>
 <div class="wrap">
-  <h2>Fragen an Institute &amp; Rechtsstaat</h2>
+  <h2 data-en="Questions to institutes &amp; the rule of law">Fragen an Institute &amp; Rechtsstaat</h2>
   <div class="card result">
     <ul>
-      <li>Inwiefern wäre ein <b>Boykott</b> gegen Institutionen nicht angebracht, die gegen den Wert des allgemeinen Fortschritts investieren, diesen behindern — oder nicht klar aufzeigen, dass sie sich <b>für</b> diesen engagieren, statt diktatorisch und scheindemokratisch über Leute zu herrschen?</li>
-      <li>Inwiefern sollte man das geringste Risiko eingehen, interessante Patentideen dokumentieren zu lassen, wenn selbst <b>halbstaatliche Institute mit staatlichen Geldern</b> nicht mal ein einfaches AI-FAQ und Transparenz zu Standardthemen bieten (siehe <a href="pitch.html">Brief an das Max-Planck-Institut</a>)?</li>
-      <li>Inwiefern kann man hier nach dem <b>Informationsfreiheitsgesetz</b> dagegen vorgehen? Ist der Staat nicht zur Bildung verpflichtet? Würden Sie dieses Mandat übernehmen — oder ein Kollege?</li>
-      <li>Inwiefern darf dafür <b>Geld verlangt</b> werden? In meinem persönlichen Kulturkreis ist das eine Unverschämtheit — Behauptung: Leute, die <b>eigene Werte</b> vertreten, korrelieren mit Eigensinnigkeit und mentaler Diversifizierung, was — seit Nazi-Deutschland wissen wir dies — eine menschliche und gesellschaftliche <b>Tugend</b> darstellt und damit evtl. auch finanziell besser entlohnt und standesgemäß besser beraten gehört. Soll man Geld investieren, um das zu untersuchen — auch wenn es utilitaristisch und nach offiziellem Statement der Mehrheit fast schon altruistisch wäre, dagegen vorzugehen?</li>
-      <li>Welche Menschen finden Utilitarismus anmaßend, dass sie bereit sind, sich dermaßen selbst zu schaden? <b>Wann kann man so etwas an eine Staatsanwaltschaft übergeben?</b></li>
+      <li data-en="To what extent would a <b>boycott</b> not be appropriate against institutions that invest against the value of general progress, hinder it — or do not clearly show that they are committed <b>to</b> it, instead of ruling over people in a dictatorial and pseudo-democratic way?">Inwiefern wäre ein <b>Boykott</b> gegen Institutionen nicht angebracht, die gegen den Wert des allgemeinen Fortschritts investieren, diesen behindern — oder nicht klar aufzeigen, dass sie sich <b>für</b> diesen engagieren, statt diktatorisch und scheindemokratisch über Leute zu herrschen?</li>
+      <li data-en="To what extent should one take even the slightest risk of having interesting patent ideas documented, when even <b>semi-state institutes funded by public money</b> don't offer so much as a simple AI FAQ and transparency on standard topics (see <a href='pitch.html'>letter to the Max Planck Institute</a>)?">Inwiefern sollte man das geringste Risiko eingehen, interessante Patentideen dokumentieren zu lassen, wenn selbst <b>halbstaatliche Institute mit staatlichen Geldern</b> nicht mal ein einfaches AI-FAQ und Transparenz zu Standardthemen bieten (siehe <a href="pitch.html">Brief an das Max-Planck-Institut</a>)?</li>
+      <li data-en="To what extent can one take action against this under the German <b>Freedom of Information Act (IFG)</b>? Isn't the state obliged to provide education? Would you take on this mandate — or a colleague?">Inwiefern kann man hier nach dem <b>Informationsfreiheitsgesetz</b> dagegen vorgehen? Ist der Staat nicht zur Bildung verpflichtet? Würden Sie dieses Mandat übernehmen — oder ein Kollege?</li>
+      <li data-en="To what extent may <b>money be charged</b> for this? In my personal cultural circle that is an impertinence — claim: people who hold <b>their own values</b> correlate with wilfulness and mental diversification, which — as we have known since Nazi Germany — is a human and social <b>virtue</b> and therefore perhaps also deserves better financial reward and advice befitting its standing. Should one invest money to investigate this — even if, in utilitarian terms and according to the official statement of the majority, taking action against it would be almost altruistic?">Inwiefern darf dafür <b>Geld verlangt</b> werden? In meinem persönlichen Kulturkreis ist das eine Unverschämtheit — Behauptung: Leute, die <b>eigene Werte</b> vertreten, korrelieren mit Eigensinnigkeit und mentaler Diversifizierung, was — seit Nazi-Deutschland wissen wir dies — eine menschliche und gesellschaftliche <b>Tugend</b> darstellt und damit evtl. auch finanziell besser entlohnt und standesgemäß besser beraten gehört. Soll man Geld investieren, um das zu untersuchen — auch wenn es utilitaristisch und nach offiziellem Statement der Mehrheit fast schon altruistisch wäre, dagegen vorzugehen?</li>
+      <li data-en="Which people find utilitarianism so presumptuous that they are willing to harm themselves to such an extent? <b>When can something like this be handed over to a public prosecutor?</b>">Welche Menschen finden Utilitarismus anmaßend, dass sie bereit sind, sich dermaßen selbst zu schaden? <b>Wann kann man so etwas an eine Staatsanwaltschaft übergeben?</b></li>
     </ul>
   </div>
 </div>
@@ -67,24 +75,40 @@ footer{padding:32px 0;font-size:11px;color:rgba(255,255,255,0.3)}
 
 <section>
 <div class="wrap">
-  <h2>Fragen zum Zugang</h2>
+  <h2 data-en="Questions about access">Fragen zum Zugang</h2>
   <div class="card result">
     <ul>
-      <li>Inwiefern ergibt es Sinn, dass sich meinesgleichen um Technologien wie die Bedienung von <b>CNC-Fräsen</b> Gedanken machen muss, wenn <b>Metalldruckverfahren</b> bessere Erfolgsquoten haben und deren Bedienung und Programmierung mit spielerischen Programmen besser erlernt werden kann?</li>
-      <li>Allgemeiner: <b>Wie erhält man Zugang zu wichtigen Patenten und Technologie?</b> Lohnt sich das Teilnehmen an Vollversammlungen?</li>
-      <li>Welche Anforderungen, welchen Weg muss man bestreiten, um nicht wie ein Mensch zehnter Klasse behandelt zu werden?</li>
-      <li>Wie kann man sich gegen <b>schweigsame Gottes-Imitanten</b> wehren — wenn der Vorwurf nichts Geringeres ist als einen Rechtsstaat auszuhebeln, Menschen falsch zu klassifizieren und zu diskriminieren sowie Bias und unnatürliches Verhalten einfließen zu lassen?</li>
+      <li data-en="To what extent does it make sense for people like me to have to think about technologies such as operating <b>CNC mills</b>, when <b>metal printing processes</b> have better success rates and their operation and programming can be learned better with playful programs?">Inwiefern ergibt es Sinn, dass sich meinesgleichen um Technologien wie die Bedienung von <b>CNC-Fräsen</b> Gedanken machen muss, wenn <b>Metalldruckverfahren</b> bessere Erfolgsquoten haben und deren Bedienung und Programmierung mit spielerischen Programmen besser erlernt werden kann?</li>
+      <li data-en="More generally: <b>how does one gain access to important patents and technology?</b> Is it worth attending general assemblies?">Allgemeiner: <b>Wie erhält man Zugang zu wichtigen Patenten und Technologie?</b> Lohnt sich das Teilnehmen an Vollversammlungen?</li>
+      <li data-en="What requirements, what path must one take so as not to be treated like a tenth-class human being?">Welche Anforderungen, welchen Weg muss man bestreiten, um nicht wie ein Mensch zehnter Klasse behandelt zu werden?</li>
+      <li data-en="How can one defend oneself against <b>silent god-imitators</b> — when the accusation is nothing less than undermining the rule of law, misclassifying and discriminating against people, and letting bias and unnatural behaviour flow in?">Wie kann man sich gegen <b>schweigsame Gottes-Imitanten</b> wehren — wenn der Vorwurf nichts Geringeres ist als einen Rechtsstaat auszuhebeln, Menschen falsch zu klassifizieren und zu diskriminieren sowie Bias und unnatürliches Verhalten einfließen zu lassen?</li>
     </ul>
   </div>
-  <p class="mini">Diese Fragen sind Teil der gs-commie-Grundwerte — siehe auch die Liste der offenen Fragen an die Forschung im <a href="pitch.html">Pitch</a>.</p>
+  <p class="mini" data-en="These questions are part of the gs-commie core values — see also the list of open questions to research in the <a href='pitch.html'>pitch</a>.">Diese Fragen sind Teil der gs-commie-Grundwerte — siehe auch die Liste der offenen Fragen an die Forschung im <a href="pitch.html">Pitch</a>.</p>
 </div>
 </section>
 
 <footer>
-<div class="wrap">
+<div class="wrap" data-en="gs-commie.uk · Gleichschalt-Kommie · Critique of patent law">
   gs-commie.uk · Gleichschalt-Kommie · Kritik am Patentrecht
 </div>
 </footer>
 
+<script>
+function setLang(lang) {
+  try { localStorage.setItem('pitch_lang', lang); } catch (e) {}
+  document.documentElement.lang = lang;
+  document.title = lang === 'en' ? 'Topics on patent law — gs-commie.uk' : 'Themen zum Patentrecht — gs-commie.uk';
+  document.querySelectorAll('[data-en]').forEach(el => {
+    if (el.dataset.de === undefined) el.dataset.de = el.innerHTML;
+    el.innerHTML = lang === 'en' ? el.dataset.en : el.dataset.de;
+  });
+  ['de', 'en'].forEach(l => { document.getElementById('lang-' + l).className = l === lang ? 'on' : ''; });
+}
+let initial = '';
+try { initial = localStorage.getItem('pitch_lang') || ''; } catch (e) {}
+if (initial !== 'de' && initial !== 'en') initial = (navigator.language || 'de').toLowerCase().startsWith('de') ? 'de' : 'en';
+setLang(initial);
+</script>
 </body>
 </html>

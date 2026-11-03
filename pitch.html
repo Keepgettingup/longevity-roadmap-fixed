@@ -42,88 +42,79 @@ input[type=range].blue::-webkit-slider-thumb{border-color:#00d4ff}
 footer{padding:32px 0;font-size:11px;color:rgba(255,255,255,0.3)}
 select option{color:#000;background:#fff}
 li{margin-left:18px;margin-bottom:6px}
+.lang-switch{position:fixed;top:14px;right:14px;z-index:50;display:flex;border:1px solid rgba(245,197,66,0.4);border-radius:20px;overflow:hidden;background:rgba(7,7,26,0.85);backdrop-filter:blur(6px)}
+.lang-switch button{padding:6px 14px;border:0;background:transparent;color:rgba(255,255,255,0.55);font-size:12px;font-weight:700;letter-spacing:1px;cursor:pointer}
+.lang-switch button.on{background:rgba(245,197,66,0.18);color:#f5c542}
 </style>
 </head>
 <body>
 
+<div class="lang-switch" role="group" aria-label="Sprache / Language">
+  <button id="lang-de" onclick="setLang('de')">DE</button>
+  <button id="lang-en" onclick="setLang('en')">EN</button>
+</div>
+
 <section>
 <div class="wrap">
-  <div class="tag">gs-commie.uk · Gründungssystem</div>
-  <h1>Tausche deine <span class="gold">Idee</span>.<br>Werde Teil der <span class="gold">Gleichschalt-Kommie Community</span>.</h1>
-  <p class="sub">Ideen werden ausgetauscht — und daraus entsteht eine Rangliste. Ein Teil des Ideen-Geldes wird <b>genossenschaftlich</b> verwaltet, in einer Genossenschaftsrangliste, die bis in politische Ämter hineinreicht. Deine Idee wird in eine 3D-Map eingeflochten: was besser bewertet wird, wird besser entlohnt — solange es der <b>Richtigkeit zu den gs-commie-Kernprioritäten</b> entspricht. Wir sind eine streng idealistische Organisation.</p>
+  <div class="tag" data-en="gs-commie.uk · Founding System">gs-commie.uk · Gründungssystem</div>
+  <h1 data-en="Trade your <span class='gold'>idea</span>.<br>Become part of the <span class='gold'>Gleichschalt-Kommie Community</span>.">Tausche deine <span class="gold">Idee</span>.<br>Werde Teil der <span class="gold">Gleichschalt-Kommie Community</span>.</h1>
+  <p class="sub" data-en="Ideas are exchanged — and from that a ranking emerges. Part of the idea money is managed <b>cooperatively</b>, in a cooperative ranking that reaches all the way into political offices. Your idea is woven into a 3D map: what is rated better is rewarded better — as long as it is <b>correct with respect to the gs-commie core priorities</b>. We are a strictly idealistic organisation.">Ideen werden ausgetauscht — und daraus entsteht eine Rangliste. Ein Teil des Ideen-Geldes wird <b>genossenschaftlich</b> verwaltet, in einer Genossenschaftsrangliste, die bis in politische Ämter hineinreicht. Deine Idee wird in eine 3D-Map eingeflochten: was besser bewertet wird, wird besser entlohnt — solange es der <b>Richtigkeit zu den gs-commie-Kernprioritäten</b> entspricht. Wir sind eine streng idealistische Organisation.</p>
 </div>
 </section>
 
 <section id="pitch-video">
 <div class="wrap">
-  <h2>🎬 Der Pitch in 1 Video</h2>
+  <h2 data-en="🎬 The pitch in 1 video">🎬 Der Pitch in 1 Video</h2>
   <div style="display:flex;gap:8px;margin:16px 0">
-    <button class="btn" id="vid-de" onclick="setPitchLang('de')">Deutsch</button>
-    <button class="btn sec" id="vid-en" onclick="setPitchLang('en')">English</button>
+    <button class="btn" id="vid-de" onclick="setLang('de')">Deutsch</button>
+    <button class="btn sec" id="vid-en" onclick="setLang('en')">English</button>
   </div>
   <video id="pitch-player" controls playsinline preload="metadata" style="width:100%;border-radius:14px;border:1px solid rgba(255,255,255,0.08);background:#000">
     <source src="media/pitch-de.mp4" type="video/mp4">
   </video>
   <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px">
-    <a class="btn" id="tg-share" target="_blank" rel="noopener">✈ Auf Telegram teilen</a>
-    <a class="btn sec" href="https://t.me/ooiuoiuhogo_bot?start=pitch" target="_blank" rel="noopener">🌱 Fragen an den Pitch-Bot</a>
+    <a class="btn" id="tg-share" target="_blank" rel="noopener" data-en="✈ Share on Telegram">✈ Auf Telegram teilen</a>
+    <a class="btn sec" href="https://t.me/ooiuoiuhogo_bot?start=pitch" target="_blank" rel="noopener" data-en="🌱 Ask the pitch bot">🌱 Fragen an den Pitch-Bot</a>
   </div>
 </div>
 </section>
-<script>
-const PITCH_URL = 'https://gs-commie.uk/pitch';
-const PITCH_TEXT = {
-  de: 'Tausche deine Idee — der Gleichschalt-Kommie Pitch:',
-  en: 'Trade your idea — the Gleichschalt-Kommie pitch:'
-};
-function setPitchLang(lang) {
-  const player = document.getElementById('pitch-player');
-  player.src = 'media/pitch-' + lang + '.mp4';
-  player.load();
-  document.getElementById('vid-de').className = lang === 'de' ? 'btn' : 'btn sec';
-  document.getElementById('vid-en').className = lang === 'en' ? 'btn' : 'btn sec';
-  document.getElementById('tg-share').href = 'https://t.me/share/url?url=' +
-    encodeURIComponent(PITCH_URL) + '&text=' + encodeURIComponent(PITCH_TEXT[lang]);
-}
-setPitchLang((navigator.language || 'de').toLowerCase().startsWith('de') ? 'de' : 'en');
-</script>
 
 <section>
 <div class="wrap">
-  <h2>Die Regeln des Systems</h2>
+  <h2 data-en="The rules of the system">Die Regeln des Systems</h2>
   <div class="grid2" style="margin-top:24px">
     <div class="card">
-      <h3 class="gold">⚖ Begründungspflicht</h3>
+      <h3 class="gold" data-en="⚖ Duty to justify">⚖ Begründungspflicht</h3>
       <ul class="result">
-        <li>Keine <a href="https://gs-commie.uk" target="_blank" style="color:#f5c542">gs-commie-Priorität</a> → Begründung nötig</li>
-        <li><b>Soziologisch:</b> Beweis einer soziologisch <b>positiven</b> — oder zumindest <b>nicht ablenkenden</b> — Wirkung für den Fortschritt. Bei soziologischer Wirkung ggf. <b>Bürgschaft</b> erforderlich</li>
-        <li><b>Finanziell:</b> die Wirkung kann auch als finanziell betrachtet werden — dann wird <b>erwartet, dass finanzielle Abgaben geleistet werden, weil wir selbst dafür bürgen müssen</b>. Ausnahme: eine kooperierende Bank bringt Institute wie das Max-Planck-Institut dazu, die Liste der offenen Fragen zu besprechen</li>
-        <li><b>Abgaben-Anteile</b> werden in <b>Individualverträgen mit dem Admin</b> geklärt</li>
+        <li data-en="No <a href='https://gs-commie.uk' target='_blank' rel='noopener' style='color:#f5c542'>gs-commie priority</a> → justification required">Keine <a href="https://gs-commie.uk" target="_blank" rel="noopener" style="color:#f5c542">gs-commie-Priorität</a> → Begründung nötig</li>
+        <li data-en="<b>Sociological:</b> proof of a sociologically <b>positive</b> — or at least <b>non-distracting</b> — effect on progress. A sociological effect may require a <b>guarantee (Bürgschaft)</b>"><b>Soziologisch:</b> Beweis einer soziologisch <b>positiven</b> — oder zumindest <b>nicht ablenkenden</b> — Wirkung für den Fortschritt. Bei soziologischer Wirkung ggf. <b>Bürgschaft</b> erforderlich</li>
+        <li data-en="<b>Financial:</b> the effect can also be considered financial — then <b>financial contributions are expected, because we ourselves have to vouch for it</b>. Exception: a cooperating bank gets institutes like the Max Planck Institute to discuss the list of open questions"><b>Finanziell:</b> die Wirkung kann auch als finanziell betrachtet werden — dann wird <b>erwartet, dass finanzielle Abgaben geleistet werden, weil wir selbst dafür bürgen müssen</b>. Ausnahme: eine kooperierende Bank bringt Institute wie das Max-Planck-Institut dazu, die Liste der offenen Fragen zu besprechen</li>
+        <li data-en="<b>Contribution shares</b> are settled in <b>individual contracts with the admin</b>"><b>Abgaben-Anteile</b> werden in <b>Individualverträgen mit dem Admin</b> geklärt</li>
       </ul>
     </div>
     <div class="card">
-      <h3 class="cyan">🛡 Buergliner &amp; Notar</h3>
+      <h3 class="cyan" data-en="🛡 Buergliner &amp; Notary">🛡 Buergliner &amp; Notar</h3>
       <ul class="result">
-        <li>Buergliner ist gesetzlich an den Protester-Notar gebunden</li>
-        <li>Beweisvideo für den Notar: bürgerlicher Name, Ideen-Titel, Adresse, Google/GitHub-Konto, Gesicht — Tauschpartner benennen oder zeigen</li>
-        <li><b>Ein Video genügt</b>, wenn beide darin zu sehen sind und die Angaben machen</li>
-        <li>Volle Transparenz für die Community</li>
+        <li data-en="The Buergliner is legally bound to the Protester-Notary">Buergliner ist gesetzlich an den Protester-Notar gebunden</li>
+        <li data-en="Proof video for the notary: legal name, idea title, address, Google/GitHub account, face — name or show the exchange partner">Beweisvideo für den Notar: bürgerlicher Name, Ideen-Titel, Adresse, Google/GitHub-Konto, Gesicht — Tauschpartner benennen oder zeigen</li>
+        <li data-en="<b>One video is enough</b> if both appear in it and give their details"><b>Ein Video genügt</b>, wenn beide darin zu sehen sind und die Angaben machen</li>
+        <li data-en="Full transparency for the community">Volle Transparenz für die Community</li>
       </ul>
     </div>
     <div class="card">
-      <h3>🗺 Ideen-Mindmap</h3>
+      <h3 data-en="🗺 Idea mind map">🗺 Ideen-Mindmap</h3>
       <ul class="result">
-        <li>Die Idee wird später in einer Mindmap präsentiert</li>
-        <li>Ein Bilanzplan kann dort extrahiert/eingefügt werden</li>
-        <li>Finanzen &amp; Aktivitätsdaten folgen dort, nicht beim Tausch</li>
+        <li data-en="The idea is later presented in a mind map">Die Idee wird später in einer Mindmap präsentiert</li>
+        <li data-en="A balance plan can be extracted/inserted there">Ein Bilanzplan kann dort extrahiert/eingefügt werden</li>
+        <li data-en="Finances &amp; activity data follow there, not during the exchange">Finanzen &amp; Aktivitätsdaten folgen dort, nicht beim Tausch</li>
       </ul>
     </div>
     <div class="card">
-      <h3>🔁 Tausch-Modi</h3>
+      <h3 data-en="🔁 Exchange modes">🔁 Tausch-Modi</h3>
       <ul class="result">
-        <li>Beste Idee ↔ beste Idee</li>
-        <li>Mittlere Idee ↔ mittlere Idee</li>
-        <li>Dritte Instanz bewertet beide Ideen — ob die Umfänge ähnlich groß sind</li>
+        <li data-en="Best idea ↔ best idea">Beste Idee ↔ beste Idee</li>
+        <li data-en="Medium idea ↔ medium idea">Mittlere Idee ↔ mittlere Idee</li>
+        <li data-en="A third party assesses both ideas — whether their scopes are similar in size">Dritte Instanz bewertet beide Ideen — ob die Umfänge ähnlich groß sind</li>
       </ul>
     </div>
   </div>
@@ -132,61 +123,61 @@ setPitchLang((navigator.language || 'de').toLowerCase().startsWith('de') ? 'de' 
 
 <section>
 <div class="wrap">
-  <h2>Grundwerte &amp; Theorie</h2>
-  <p class="sub" style="margin-bottom:24px">Warum gs-commie eine eigene Informationsinfrastruktur aufbaut — statt auf staatliche Institutionen zu warten.</p>
+  <h2 data-en="Core values &amp; theory">Grundwerte &amp; Theorie</h2>
+  <p class="sub" style="margin-bottom:24px" data-en="Why gs-commie builds its own information infrastructure — instead of waiting for state institutions.">Warum gs-commie eine eigene Informationsinfrastruktur aufbaut — statt auf staatliche Institutionen zu warten.</p>
   <div class="grid2">
     <div class="card">
-      <h3 class="gold">🏛 Staatstheorie</h3>
+      <h3 class="gold" data-en="🏛 Theory of the state">🏛 Staatstheorie</h3>
       <ul class="result">
-        <li>Aus der Theorie: der Staat kann sich in seiner Rolle nicht zur Antwort verpflichtet fühlen — bzw. ist nur ein <b>Scherz-Verein</b>, der vorgesetzt wird (siehe z.&nbsp;B. <a href="patentrecht-kritik.html" style="color:#00d4ff">deutsches Patentrecht → Kritik</a>)</li>
-        <li>Man reißt sich nicht darum, extrem wichtige und beschäftigte Leute mit Fragen zu nerven — aber es muss sowieso eine <b>ausgeprägte Informationsinfrastruktur</b> geben</li>
+        <li data-en="From theory: the state cannot feel obliged to answer in its role — or is just a <b>joke club</b> put in charge of us (see e.g. <a href='patentrecht-kritik.html' style='color:#00d4ff'>German patent law → critique</a>)">Aus der Theorie: der Staat kann sich in seiner Rolle nicht zur Antwort verpflichtet fühlen — bzw. ist nur ein <b>Scherz-Verein</b>, der vorgesetzt wird (siehe z.&nbsp;B. <a href="patentrecht-kritik.html" style="color:#00d4ff">deutsches Patentrecht → Kritik</a>)</li>
+        <li data-en="Nobody is keen on bothering extremely important and busy people with questions — but there has to be a <b>well-developed information infrastructure</b> anyway">Man reißt sich nicht darum, extrem wichtige und beschäftigte Leute mit Fragen zu nerven — aber es muss sowieso eine <b>ausgeprägte Informationsinfrastruktur</b> geben</li>
       </ul>
     </div>
     <div class="card">
-      <h3 class="cyan">📜 Kritik an Petitionsplattformen</h3>
+      <h3 class="cyan" data-en="📜 Critique of petition platforms">📜 Kritik an Petitionsplattformen</h3>
       <ul class="result">
-        <li>Keine Anonymisierungs-Möglichkeiten mit <b>Zero-Knowledge-Proof</b> — wäre ggf. angemessen</li>
-        <li>Man kann die Daten sehr leicht fälschen</li>
-        <li>Keine Einstellbarkeit von Rückzugsbedingungen, wenig Individualisierung</li>
-        <li>Fraglich, ob die Bundestags-Seite seriös genug ist — Perfektionismus bremst die Einreichung</li>
+        <li data-en="No anonymisation options using <b>zero-knowledge proofs</b> — which might be appropriate">Keine Anonymisierungs-Möglichkeiten mit <b>Zero-Knowledge-Proof</b> — wäre ggf. angemessen</li>
+        <li data-en="The data can be faked very easily">Man kann die Daten sehr leicht fälschen</li>
+        <li data-en="No configurable withdrawal conditions, little individualisation">Keine Einstellbarkeit von Rückzugsbedingungen, wenig Individualisierung</li>
+        <li data-en="Questionable whether the Bundestag site is serious enough — perfectionism holds back the submission">Fraglich, ob die Bundestags-Seite seriös genug ist — Perfektionismus bremst die Einreichung</li>
       </ul>
     </div>
     <div class="card">
-      <h3 class="gold">🔓 Informationsfreigabe-Klausel</h3>
+      <h3 class="gold" data-en="🔓 Information release clause">🔓 Informationsfreigabe-Klausel</h3>
       <ul class="result">
-        <li><b>Jedes gs-commie-Mitglied muss die Informationsfreigabe-Klausel unterschreiben</b> — außer es haftet deutlich mehr finanziell</li>
-        <li>Einladung an große Tech-Unternehmen, die Klausel als Petition zu unterschreiben — ihre KI-Systeme durchsuchen ohnehin Kommentarsektionen, Mehrfachversand ist unkritisch</li>
-        <li>Auch Institute der hohen medizinischen Forschung (nicht nur MPI) sollen zu den Punkten ein <b>Statement abgeben / unterschreiben</b> — Form: Interessenten-Ansammlung, anonymisierte Petition, ggf. Verschwiegenheitserklärung unter argumentierten Bedingungen</li>
-        <li>Zu prüfen: ist eine Aussage nicht sogar verpflichtend unter dem <b>Informationsfreiheitsgesetz</b>?</li>
-        <li>Brandschutzmaßnahmen und Geldbeleihung werden separat <b>Auge zu Auge</b> verhandelt</li>
+        <li data-en="<b>Every gs-commie member must sign the information release clause</b> — unless they accept considerably higher financial liability"><b>Jedes gs-commie-Mitglied muss die Informationsfreigabe-Klausel unterschreiben</b> — außer es haftet deutlich mehr finanziell</li>
+        <li data-en="Invitation to big tech companies to sign the clause as a petition — their AI systems scan comment sections anyway, so sending it to several at once is no problem">Einladung an große Tech-Unternehmen, die Klausel als Petition zu unterschreiben — ihre KI-Systeme durchsuchen ohnehin Kommentarsektionen, Mehrfachversand ist unkritisch</li>
+        <li data-en="Institutes of high-level medical research (not only MPI) should also <b>issue / sign a statement</b> on the points — form: collection of interested parties, anonymised petition, possibly a non-disclosure agreement under argued conditions">Auch Institute der hohen medizinischen Forschung (nicht nur MPI) sollen zu den Punkten ein <b>Statement abgeben / unterschreiben</b> — Form: Interessenten-Ansammlung, anonymisierte Petition, ggf. Verschwiegenheitserklärung unter argumentierten Bedingungen</li>
+        <li data-en="To be checked: isn't a statement perhaps even mandatory under the German <b>Freedom of Information Act (IFG)</b>?">Zu prüfen: ist eine Aussage nicht sogar verpflichtend unter dem <b>Informationsfreiheitsgesetz</b>?</li>
+        <li data-en="Fire protection measures and money lending are negotiated separately, <b>face to face</b>">Brandschutzmaßnahmen und Geldbeleihung werden separat <b>Auge zu Auge</b> verhandelt</li>
       </ul>
     </div>
     <div class="card" id="transparenz">
-      <h3 class="cyan">🪟 Transparenz-Prinzip — Zugang gegen Offenheit</h3>
+      <h3 class="cyan" data-en="🪟 Transparency principle — access in exchange for openness">🪟 Transparenz-Prinzip — Zugang gegen Offenheit</h3>
       <ul class="result">
-        <li>Der größte Wille von gs-commie: <b>Transparenz über Haltung, Arbeitsweise und Geld-Ethik</b> — der einfachste Weg zum Fortschritt</li>
-        <li>Wer seine Arbeitsweise, seine Ideen und seine Geld-Priorisierung <b>intransparent</b> hält, bekommt <b>keinen vollen Zugang</b> zu den Ideen anderer</li>
-        <li><b>Stufen:</b> nichts offengelegt → Pitch, Regeln, Ideen-Titel · Arbeitsweise + Geld-Prioritäten offengelegt → Zusammenfassungen anderer Ideen · volle Idee + Notar-Video → voller Zugang auf gleicher Stufe &amp; Tausch</li>
-        <li><b>Wir sind unsere eigenen Patentmacher und -schützer:</b> jede getackte, zeitgestempelte Einreichung ist eine <b>Schutzveröffentlichung</b> — niemand kann die Idee danach noch patentieren und dir wegnehmen</li>
-        <li>⚠ Achtung: genau deshalb ist die Idee nach der Einreichung auch für <b>dich</b> nicht mehr klassisch patentierbar (absolute Neuheit, DE/EU) — wer ein Amtspatent will, meldet <b>vorher</b> an</li>
+        <li data-en="gs-commie's greatest will: <b>transparency about attitude, way of working and money ethics</b> — the simplest path to progress">Der größte Wille von gs-commie: <b>Transparenz über Haltung, Arbeitsweise und Geld-Ethik</b> — der einfachste Weg zum Fortschritt</li>
+        <li data-en="Whoever keeps their way of working, their ideas and their money prioritisation <b>intransparent</b> gets <b>no full access</b> to other people's ideas">Wer seine Arbeitsweise, seine Ideen und seine Geld-Priorisierung <b>intransparent</b> hält, bekommt <b>keinen vollen Zugang</b> zu den Ideen anderer</li>
+        <li data-en="<b>Levels:</b> nothing disclosed → pitch, rules, idea titles · way of working + money priorities disclosed → summaries of other ideas · full idea + notary video → full access at the same level &amp; exchange"><b>Stufen:</b> nichts offengelegt → Pitch, Regeln, Ideen-Titel · Arbeitsweise + Geld-Prioritäten offengelegt → Zusammenfassungen anderer Ideen · volle Idee + Notar-Video → voller Zugang auf gleicher Stufe &amp; Tausch</li>
+        <li data-en="<b>We are our own patent makers and protectors:</b> every tagged, time-stamped submission is a <b>defensive publication</b> — nobody can patent the idea afterwards and take it from you"><b>Wir sind unsere eigenen Patentmacher und -schützer:</b> jede getackte, zeitgestempelte Einreichung ist eine <b>Schutzveröffentlichung</b> — niemand kann die Idee danach noch patentieren und dir wegnehmen</li>
+        <li data-en="⚠ Caution: precisely for that reason the idea is no longer classically patentable for <b>you</b> either after submission (absolute novelty, DE/EU) — if you want an official patent, file <b>before</b>">⚠ Achtung: genau deshalb ist die Idee nach der Einreichung auch für <b>dich</b> nicht mehr klassisch patentierbar (absolute Neuheit, DE/EU) — wer ein Amtspatent will, meldet <b>vorher</b> an</li>
       </ul>
     </div>
   </div>
   <div class="card" style="margin-top:16px">
-    <h3>🔬 Offene Fragen an die Forschung — die Liste an MPI &amp; Institute der hohen medizinischen Forschung</h3>
-    <p class="mini" style="margin-bottom:10px">Kontext: starke Diskrepanz zwischen Forschungsfortschritt (AI, ChatGPT) und Verfügbarkeit „wahrscheinlich nicht öffentlicher" Datenbanken — Suchmaschinen für Videomaterial, Live-Streams, Studien, „verfehlte" Studien, intelligente Vernetzung der Informationen zur Frage, wie Fortschritt in der Medizin entsteht.</p>
+    <h3 data-en="🔬 Open questions to research — the list for MPI &amp; institutes of high-level medical research">🔬 Offene Fragen an die Forschung — die Liste an MPI &amp; Institute der hohen medizinischen Forschung</h3>
+    <p class="mini" style="margin-bottom:10px" data-en="Context: a strong discrepancy between research progress (AI, ChatGPT) and the availability of “probably non-public” databases — search engines for video material, live streams, studies, “failed” studies, intelligent linking of information on the question of how progress in medicine comes about.">Kontext: starke Diskrepanz zwischen Forschungsfortschritt (AI, ChatGPT) und Verfügbarkeit „wahrscheinlich nicht öffentlicher" Datenbanken — Suchmaschinen für Videomaterial, Live-Streams, Studien, „verfehlte" Studien, intelligente Vernetzung der Informationen zur Frage, wie Fortschritt in der Medizin entsteht.</p>
     <ol class="result" start="0" style="margin-left:18px">
-      <li>Wie weit ist das Institut von der kompletten Autonomisierung aller chemischen Prozesse durch robotisierte Industrie entfernt — sodass alle menschlichen Experimente hinfällig werden könnten und zumindest Approximationen über den Verlauf jeder Reaktion aller chemischen Stoffe vorliegen?</li>
-      <li>Inwiefern spielt „die Gefährdung des gesellschaftlichen Friedens" und die Angst vor „unkontrollierter Waffenproduktion" bei der Auswahl des Zugangs zu solchen Suchmaschinen und Datenbanken eine Rolle?</li>
-      <li>Fließen „Selbstschutzmaßnahmen" mit ein? Glaubt das Institut, dass die Minderung des Wissens über den Verlauf von Experimenten zwangsläufig zu weniger Unfällen durch Selbstexperimentierung führt — oder ließe sich ein Vertrag aushandeln, dass das Institut keinerlei Haftung übernimmt, wenn man sich beim Kopieren eines offiziellen Versuchs verletzt?</li>
-      <li>Inwiefern spielen merkwürdige organisierte Machtspiele, Verträge (z.&nbsp;B. Empfindung der Unmöglichkeit einer fairen finanziellen Entlohnung), Tribalism oder Image (ethisch zweifelhafte Experimente, Meinungsbildner, Datenschutz) eine Rolle?</li>
-      <li>Spielen und/od. inwiefern spielen religiöse Bildung bzw. Überzeugungen und Meinungsmache oder kapitalistische Leistungssteigerungstheorien bzw. mentale Diversität eine Rolle?</li>
-      <li>Inwiefern spielen „Treaty od. Cookie-Schutz" für die Jugend mit ein?</li>
-      <li>Welche Maßnahmen ergreift das Institut, um Skeptikern eines geordneten Ablaufes Einblick in die Forschung zu gewähren?</li>
-      <li>Welche Maßnahmen kann eine Privatperson (nicht Teil des Instituts o.&nbsp;ä.) ergreifen, um eine Chance auf Einblick in „moderne Lebenserhaltung" und „autonome selbstbestimmte Nervenkonfiguration" zu erhalten?</li>
-      <li>Welche Wege kann man begehen — oder wie stellt man sich mit dem Institut „gut" —, um Zugang zu Daten, Laboren, Technologie und Geldern zu erhalten, auch ohne Abschluss in Naturwissenschaft, Mathematik oder IT?</li>
-      <li>Gedenkt das Institut, alle möglichen Technologien zur Lebenserhaltung und „autonomen selbstbestimmten Nervenkonfiguration" schnell zu vervielfältigen und an alle Menschen abzugeben? Welche Hemmnisse gibt es?</li>
-      <li>Glauben Sie, dass alle nötigen Personen in der Forschung bereits eingesetzt wurden und die allgemeine Gesellschaft nicht mehr zu dieser Intelligenz beitragen kann? Funktioniert das nach der evolutionären Lehre überhaupt — wer sind die Intelligentesten, und ist das klar verteilt? Bias sollte nicht vorrangig sein: die Gesellschaft verfällt in Gleichgültigkeit und medizinische Verdrossenheit, der entgegengegangen werden soll.</li>
+      <li data-en="How far is the institute from the complete automation of all chemical processes by robotised industry — so that all human experiments could become obsolete and at least approximations of the course of every reaction of all chemical substances are available?">Wie weit ist das Institut von der kompletten Autonomisierung aller chemischen Prozesse durch robotisierte Industrie entfernt — sodass alle menschlichen Experimente hinfällig werden könnten und zumindest Approximationen über den Verlauf jeder Reaktion aller chemischen Stoffe vorliegen?</li>
+      <li data-en="To what extent do “endangering social peace” and the fear of “uncontrolled weapons production” play a role in deciding access to such search engines and databases?">Inwiefern spielt „die Gefährdung des gesellschaftlichen Friedens" und die Angst vor „unkontrollierter Waffenproduktion" bei der Auswahl des Zugangs zu solchen Suchmaschinen und Datenbanken eine Rolle?</li>
+      <li data-en="Are “self-protection measures” factored in? Does the institute believe that reducing knowledge about the course of experiments necessarily leads to fewer accidents through self-experimentation — or could a contract be negotiated so that the institute bears no liability if someone gets hurt copying an official experiment?">Fließen „Selbstschutzmaßnahmen" mit ein? Glaubt das Institut, dass die Minderung des Wissens über den Verlauf von Experimenten zwangsläufig zu weniger Unfällen durch Selbstexperimentierung führt — oder ließe sich ein Vertrag aushandeln, dass das Institut keinerlei Haftung übernimmt, wenn man sich beim Kopieren eines offiziellen Versuchs verletzt?</li>
+      <li data-en="To what extent do strange organised power games, contracts (e.g. the feeling that fair financial compensation is impossible to achieve), tribalism or image (ethically questionable experiments, opinion leaders, data protection) play a role?">Inwiefern spielen merkwürdige organisierte Machtspiele, Verträge (z.&nbsp;B. Empfindung der Unmöglichkeit einer fairen finanziellen Entlohnung), Tribalism oder Image (ethisch zweifelhafte Experimente, Meinungsbildner, Datenschutz) eine Rolle?</li>
+      <li data-en="Do — and/or to what extent do — religious education or convictions and opinion-making, capitalist performance-enhancement theories or mental diversity play a role?">Spielen und/od. inwiefern spielen religiöse Bildung bzw. Überzeugungen und Meinungsmache oder kapitalistische Leistungssteigerungstheorien bzw. mentale Diversität eine Rolle?</li>
+      <li data-en="To what extent does “treaty or cookie protection” for young people play a part?">Inwiefern spielen „Treaty od. Cookie-Schutz" für die Jugend mit ein?</li>
+      <li data-en="What measures does the institute take to give sceptics of an orderly process insight into its research?">Welche Maßnahmen ergreift das Institut, um Skeptikern eines geordneten Ablaufes Einblick in die Forschung zu gewähren?</li>
+      <li data-en="What measures can a private person (not part of the institute or similar) take to get a chance at insight into “modern life support” and “autonomous self-determined nerve configuration”?">Welche Maßnahmen kann eine Privatperson (nicht Teil des Instituts o.&nbsp;ä.) ergreifen, um eine Chance auf Einblick in „moderne Lebenserhaltung" und „autonome selbstbestimmte Nervenkonfiguration" zu erhalten?</li>
+      <li data-en="Which paths can one take — or how does one get on “good terms” with the institute — to gain access to data, laboratories, technology and funding, even without a degree in natural sciences, mathematics or IT?">Welche Wege kann man begehen — oder wie stellt man sich mit dem Institut „gut" —, um Zugang zu Daten, Laboren, Technologie und Geldern zu erhalten, auch ohne Abschluss in Naturwissenschaft, Mathematik oder IT?</li>
+      <li data-en="Does the institute intend to rapidly replicate all possible technologies for life support and “autonomous self-determined nerve configuration” and make them available to all people? What obstacles exist?">Gedenkt das Institut, alle möglichen Technologien zur Lebenserhaltung und „autonomen selbstbestimmten Nervenkonfiguration" schnell zu vervielfältigen und an alle Menschen abzugeben? Welche Hemmnisse gibt es?</li>
+      <li data-en="Do you believe that all necessary people are already employed in research and that society at large can no longer contribute to this intelligence? Does that even work according to evolutionary theory — who are the most intelligent, and is that clearly distributed? Bias should not take precedence: society is sliding into indifference and medical disenchantment, which should be countered.">Glauben Sie, dass alle nötigen Personen in der Forschung bereits eingesetzt wurden und die allgemeine Gesellschaft nicht mehr zu dieser Intelligenz beitragen kann? Funktioniert das nach der evolutionären Lehre überhaupt — wer sind die Intelligentesten, und ist das klar verteilt? Bias sollte nicht vorrangig sein: die Gesellschaft verfällt in Gleichgültigkeit und medizinische Verdrossenheit, der entgegengegangen werden soll.</li>
     </ol>
   </div>
 </div>
@@ -194,36 +185,36 @@ setPitchLang((navigator.language || 'de').toLowerCase().startsWith('de') ? 'de' 
 
 <section>
 <div class="wrap">
-  <h2>1 · Einreichen — „Abgabe bereit"</h2>
-  <p class="sub" style="margin-bottom:8px">Jede Seite reicht ihre Idee ein und drückt <b>„Abgabe bereit"</b>. Eingereichte Dokumente bleiben <b>versiegelt</b> — sie werden erst lesbar, wenn <b>beide</b> Einreichungen eingegangen sind.</p>
-  <p class="mini" style="margin-bottom:24px">Hinweis: Einreichungen <i>könnten</i> zusätzlich client-seitig mit einem eigenen Schlüssel verschlüsselt werden — für den Prozess ist das nicht nötig.</p>
+  <h2 data-en="1 · Submit — “Ready to submit”">1 · Einreichen — „Abgabe bereit"</h2>
+  <p class="sub" style="margin-bottom:8px" data-en="Each side submits its idea and presses <b>“Ready to submit”</b>. Submitted documents stay <b>sealed</b> — they only become readable once <b>both</b> submissions have arrived.">Jede Seite reicht ihre Idee ein und drückt <b>„Abgabe bereit"</b>. Eingereichte Dokumente bleiben <b>versiegelt</b> — sie werden erst lesbar, wenn <b>beide</b> Einreichungen eingegangen sind.</p>
+  <p class="mini" style="margin-bottom:24px" data-en="Note: submissions <i>could</i> additionally be encrypted client-side with your own key — this is not required for the process.">Hinweis: Einreichungen <i>könnten</i> zusätzlich client-seitig mit einem eigenen Schlüssel verschlüsselt werden — für den Prozess ist das nicht nötig.</p>
   <div class="card" style="border-color:rgba(245,197,66,0.5);background:rgba(245,197,66,0.08);margin-bottom:24px">
-    <p class="mini" style="margin:0">⚠ <b style="color:#f5c542">Vorsicht:</b> Was du hier gerade einträgst, ist noch <b>wenig geschützt</b> und für Hacker <b>leicht zugänglich</b> — bitte noch keine echten, wertvollen Ideen posten. Und: nach der Einreichung ist die Idee nicht mehr amtlich patentierbar (siehe <a href="#transparenz" style="color:#f5c542">Transparenz-Prinzip</a>). Aber hey: lass uns über <b>deine Moral beim Ideen-Teilen</b> reden → <a href="https://t.me/ooiuoiuhogo_bot" target="_blank" rel="noopener" style="color:#f5c542">Pitch-Bot</a></p>
+    <p class="mini" style="margin:0" data-en="⚠ <b style='color:#f5c542'>Caution:</b> what you enter here is still <b>poorly protected</b> and <b>easily accessible</b> to hackers — please don't post real, valuable ideas yet. Also: after submission the idea can no longer be officially patented (see <a href='#transparenz' style='color:#f5c542'>transparency principle</a>). But hey: let's talk about <b>your morals when sharing ideas</b> → <a href='https://t.me/ooiuoiuhogo_bot' target='_blank' rel='noopener' style='color:#f5c542'>pitch bot</a>">⚠ <b style="color:#f5c542">Vorsicht:</b> Was du hier gerade einträgst, ist noch <b>wenig geschützt</b> und für Hacker <b>leicht zugänglich</b> — bitte noch keine echten, wertvollen Ideen posten. Und: nach der Einreichung ist die Idee nicht mehr amtlich patentierbar (siehe <a href="#transparenz" style="color:#f5c542">Transparenz-Prinzip</a>). Aber hey: lass uns über <b>deine Moral beim Ideen-Teilen</b> reden → <a href="https://t.me/ooiuoiuhogo_bot" target="_blank" rel="noopener" style="color:#f5c542">Pitch-Bot</a></p>
   </div>
   <div class="grid2">
     <div class="card">
-      <h3>Deine beste Idee</h3>
-      <textarea id="idea-a-text" rows="3" placeholder="Beschreibe deine beste Geschäftsidee im Detail..."></textarea>
+      <h3 data-en="Your best idea">Deine beste Idee</h3>
+      <textarea id="idea-a-text" rows="3" placeholder="Beschreibe deine beste Geschäftsidee im Detail..." data-en-ph="Describe your best business idea in detail..."></textarea>
       <div style="display:flex;gap:8px;margin-top:8px;align-items:center">
         <input type="file" id="files-a" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.png,.jpg" style="font-size:11px;color:rgba(255,255,255,0.6)">
       </div>
-      <input type="text" id="links-a" placeholder="Links (kommagetrennt): https://…" style="margin-top:8px">
+      <input type="text" id="links-a" placeholder="Links (kommagetrennt): https://…" data-en-ph="Links (comma-separated): https://…" style="margin-top:8px">
       <div class="mini" id="files-a-list" style="margin-top:6px"></div>
       <div style="display:flex;gap:8px;margin-top:10px;align-items:center">
-        <button class="btn" id="ready-a">✔ Abgabe bereit</button>
+        <button class="btn" id="ready-a" data-en="✔ Ready to submit">✔ Abgabe bereit</button>
         <span class="mini" id="ready-a-status"></span>
       </div>
     </div>
     <div class="card">
-      <h3>Idee des Tauschpartners</h3>
-      <textarea id="idea-b-text" rows="3" placeholder="Einreichung deines Tauschpartners (Demo: Klartext)..."></textarea>
+      <h3 data-en="Your exchange partner's idea">Idee des Tauschpartners</h3>
+      <textarea id="idea-b-text" rows="3" placeholder="Einreichung deines Tauschpartners (Demo: Klartext)..." data-en-ph="Your exchange partner's submission (demo: plain text)..."></textarea>
       <div style="display:flex;gap:8px;margin-top:8px;align-items:center">
         <input type="file" id="files-b" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.png,.jpg" style="font-size:11px;color:rgba(255,255,255,0.6)">
       </div>
-      <input type="text" id="links-b" placeholder="Links (kommagetrennt): https://…" style="margin-top:8px">
+      <input type="text" id="links-b" placeholder="Links (kommagetrennt): https://…" data-en-ph="Links (comma-separated): https://…" style="margin-top:8px">
       <div class="mini" id="files-b-list" style="margin-top:6px"></div>
       <div style="display:flex;gap:8px;margin-top:10px;align-items:center">
-        <button class="btn" id="ready-b">✔ Abgabe bereit (Partner)</button>
+        <button class="btn" id="ready-b" data-en="✔ Ready to submit (partner)">✔ Abgabe bereit (Partner)</button>
         <span class="mini" id="ready-b-status"></span>
       </div>
     </div>
@@ -233,33 +224,33 @@ setPitchLang((navigator.language || 'de').toLowerCase().startsWith('de') ? 'de' 
 
 <section>
 <div class="wrap">
-  <h2>2 · Login — dein gs-commie.uk Konto</h2>
-  <p class="sub" style="margin-bottom:24px">Jede Seite loggt sich mit <b>Google oder GitHub</b> ein. Der Login-Name wird an die Einreichung <b>getackt</b> — und gilt auch für die Hauptseite <b>gs-commie.uk</b>.</p>
+  <h2 data-en="2 · Login — your gs-commie.uk account">2 · Login — dein gs-commie.uk Konto</h2>
+  <p class="sub" style="margin-bottom:24px" data-en="Each side logs in with <b>Google or GitHub</b>. The login name is <b>tagged</b> onto the submission — and also applies to the main site <b>gs-commie.uk</b>.">Jede Seite loggt sich mit <b>Google oder GitHub</b> ein. Der Login-Name wird an die Einreichung <b>getackt</b> — und gilt auch für die Hauptseite <b>gs-commie.uk</b>.</p>
   <div class="grid3" style="grid-template-columns:1fr auto 1fr;align-items:stretch">
     <div class="card" id="slot-a">
-      <h3>Seite A</h3>
-      <div class="result" id="slot-a-status">⏳ nicht eingeloggt</div>
+      <h3 data-en="Side A">Seite A</h3>
+      <div class="result" id="slot-a-status"></div>
       <div style="margin-top:12px">
-        <button class="btn sec" id="login-a">Login mit Google</button>
-        <button class="btn sec" id="gh-a" style="margin-top:6px">Login mit GitHub</button>
+        <button class="btn sec" id="login-a" data-en="Log in with Google">Login mit Google</button>
+        <button class="btn sec" id="gh-a" style="margin-top:6px" data-en="Log in with GitHub">Login mit GitHub</button>
       </div>
     </div>
     <div class="vs">⇄</div>
     <div class="card" id="slot-b">
-      <h3>Seite B</h3>
-      <div class="result" id="slot-b-status">⏳ nicht eingeloggt</div>
+      <h3 data-en="Side B">Seite B</h3>
+      <div class="result" id="slot-b-status"></div>
       <div style="margin-top:12px">
-        <button class="btn sec" id="login-b">Login mit Google</button>
-        <button class="btn sec" id="gh-b" style="margin-top:6px">Login mit GitHub</button>
+        <button class="btn sec" id="login-b" data-en="Log in with Google">Login mit Google</button>
+        <button class="btn sec" id="gh-b" style="margin-top:6px" data-en="Log in with GitHub">Login mit GitHub</button>
       </div>
     </div>
   </div>
   <div class="card" style="margin-top:16px">
-    <h3>🎥 Beweisvideo für den Bürgliner-Notar</h3>
-    <p class="mini" style="margin-bottom:10px">Im Video benennt jede Person: <b>bürgerlichen Namen</b>, <b>erste Zeile/Titel der Idee</b>, <b>Adresse</b> und das <b>Google-/GitHub-Konto</b> — bei sichtbarem Gesicht. Am besten wird der Tauschpartner benannt oder gezeigt. <b>Ein Video genügt</b>, wenn beide darin zu sehen sind und ihre Angaben machen.</p>
+    <h3 data-en="🎥 Proof video for the Bürgliner notary">🎥 Beweisvideo für den Bürgliner-Notar</h3>
+    <p class="mini" style="margin-bottom:10px" data-en="In the video each person states: <b>legal name</b>, <b>first line/title of the idea</b>, <b>address</b> and the <b>Google/GitHub account</b> — with their face visible. Ideally the exchange partner is named or shown. <b>One video is enough</b> if both appear in it and give their details.">Im Video benennt jede Person: <b>bürgerlichen Namen</b>, <b>erste Zeile/Titel der Idee</b>, <b>Adresse</b> und das <b>Google-/GitHub-Konto</b> — bei sichtbarem Gesicht. Am besten wird der Tauschpartner benannt oder gezeigt. <b>Ein Video genügt</b>, wenn beide darin zu sehen sind und ihre Angaben machen.</p>
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
       <input type="file" id="video-input" accept="video/*" style="font-size:12px;color:rgba(255,255,255,0.6)">
-      <button class="btn sec" id="video-btn">⬆ Video einreichen</button>
+      <button class="btn sec" id="video-btn" data-en="⬆ Submit video">⬆ Video einreichen</button>
       <span class="mini" id="video-status"></span>
     </div>
   </div>
@@ -268,23 +259,23 @@ setPitchLang((navigator.language || 'de').toLowerCase().startsWith('de') ? 'de' 
 
 <section>
 <div class="wrap">
-  <h2>3 · Veröffentlichung — lesbar &amp; getackt</h2>
-  <p class="sub" style="margin-bottom:24px">Sind <b>beide Dokumente abgegeben</b> und <b>beide Seiten eingeloggt</b>, kann der Tausch veröffentlicht werden. Beide Ideen erscheinen gleichzeitig — getackt mit dem jeweiligen gs-commie.uk Login-Namen.</p>
+  <h2 data-en="3 · Publication — readable &amp; tagged">3 · Veröffentlichung — lesbar &amp; getackt</h2>
+  <p class="sub" style="margin-bottom:24px" data-en="Once <b>both documents are submitted</b> and <b>both sides are logged in</b>, the exchange can be published. Both ideas appear simultaneously — tagged with the respective gs-commie.uk login name.">Sind <b>beide Dokumente abgegeben</b> und <b>beide Seiten eingeloggt</b>, kann der Tausch veröffentlicht werden. Beide Ideen erscheinen gleichzeitig — getackt mit dem jeweiligen gs-commie.uk Login-Namen.</p>
   <div class="grid3" style="grid-template-columns:1fr auto 1fr;align-items:stretch">
     <div class="card">
-      <h3>Dokument A</h3>
-      <div class="result" id="plain-a" style="font-size:12px">🔒 versiegelt — lesbar erst nach beiden Abgaben</div>
+      <h3 data-en="Document A">Dokument A</h3>
+      <div class="result" id="plain-a" style="font-size:12px"></div>
       <div class="mini" id="tag-a" style="margin-top:8px"></div>
     </div>
     <div class="vs">⇄</div>
     <div class="card">
-      <h3>Dokument B</h3>
-      <div class="result" id="plain-b" style="font-size:12px">🔒 versiegelt — lesbar erst nach beiden Abgaben</div>
+      <h3 data-en="Document B">Dokument B</h3>
+      <div class="result" id="plain-b" style="font-size:12px"></div>
       <div class="mini" id="tag-b" style="margin-top:8px"></div>
     </div>
   </div>
   <div style="text-align:center;margin-top:16px">
-    <button class="btn" id="swap-btn" disabled>📢 Tausch veröffentlichen</button>
+    <button class="btn" id="swap-btn" disabled data-en="📢 Publish exchange">📢 Tausch veröffentlichen</button>
     <div id="swap-result" class="result" style="margin-top:12px;display:none"></div>
   </div>
 </div>
@@ -292,28 +283,28 @@ setPitchLang((navigator.language || 'de').toLowerCase().startsWith('de') ? 'de' 
 
 <section>
 <div class="wrap">
-  <h2>4 · Die Rangliste &amp; die Genossenschaft</h2>
-  <p class="sub" style="margin-bottom:24px">Aus den getauschten Ideen entsteht die <b>allgemeine Rangliste</b>. Ein Teil des Ideen-Geldes fließt genossenschaftlich — verwaltet über die <b>Genossenschaftsrangliste</b>.</p>
+  <h2 data-en="4 · The ranking &amp; the cooperative">4 · Die Rangliste &amp; die Genossenschaft</h2>
+  <p class="sub" style="margin-bottom:24px" data-en="The exchanged ideas produce the <b>general ranking</b>. Part of the idea money flows cooperatively — managed via the <b>cooperative ranking</b>.">Aus den getauschten Ideen entsteht die <b>allgemeine Rangliste</b>. Ein Teil des Ideen-Geldes fließt genossenschaftlich — verwaltet über die <b>Genossenschaftsrangliste</b>.</p>
   <div class="grid2">
     <div class="card">
-      <h3 class="gold">📊 Die Genossenschaftsrangliste beeinflusst</h3>
+      <h3 class="gold" data-en="📊 The cooperative ranking influences">📊 Die Genossenschaftsrangliste beeinflusst</h3>
       <ul class="result">
-        <li><b>Politische Ämter</b> — Zugang und Rang in der gs-commie-Politik</li>
-        <li><b>Verwaltungsgelder</b> — Zuschüsse für die Hauptziele</li>
-        <li><b>Priorisierung</b> — welche Ideen die Kernprioritäten vorantreiben</li>
-        <li><b>Ideenentlohnung</b> — bessere Bewertungen = bessere Entlohnung</li>
+        <li data-en="<b>Political offices</b> — access and rank in gs-commie politics"><b>Politische Ämter</b> — Zugang und Rang in der gs-commie-Politik</li>
+        <li data-en="<b>Administrative funds</b> — grants for the main goals"><b>Verwaltungsgelder</b> — Zuschüsse für die Hauptziele</li>
+        <li data-en="<b>Prioritisation</b> — which ideas push the core priorities forward"><b>Priorisierung</b> — welche Ideen die Kernprioritäten vorantreiben</li>
+        <li data-en="<b>Idea compensation</b> — better ratings = better compensation"><b>Ideenentlohnung</b> — bessere Bewertungen = bessere Entlohnung</li>
       </ul>
-      <div class="mini" style="margin-top:10px">★ Die <b>Ideeeneingabe</b> nimmt in dieser Rangliste einen besonderen Rang ein — wer seine Idee einbringt, tritt aktiv in die Rang-Ökonomie ein.</div>
+      <div class="mini" style="margin-top:10px" data-en="★ <b>Submitting an idea</b> holds a special rank in this ranking — whoever contributes their idea actively enters the rank economy.">★ Die <b>Ideeneingabe</b> nimmt in dieser Rangliste einen besonderen Rang ein — wer seine Idee einbringt, tritt aktiv in die Rang-Ökonomie ein.</div>
     </div>
     <div class="card">
-      <h3 class="cyan">🗺 Ideen in der 3D-Map</h3>
+      <h3 class="cyan" data-en="🗺 Ideas in the 3D map">🗺 Ideen in der 3D-Map</h3>
       <ul class="result">
-        <li>Jede Idee wird in die 3D-Map von gs-commie.uk eingeflochten</li>
-        <li>Bewertungen der Community bestimmen die Position</li>
-        <li>Bessere Bewertung → bessere Entlohnung</li>
-        <li><b>Aber:</b> Abhängigkeit zur Richtigkeit für die Kernprioritäten — Geldideen können verpflichtet werden, mehr in die gs-commie-Prioritäten fließen zu lassen</li>
+        <li data-en="Every idea is woven into the gs-commie.uk 3D map">Jede Idee wird in die 3D-Map von gs-commie.uk eingeflochten</li>
+        <li data-en="Community ratings determine its position">Bewertungen der Community bestimmen die Position</li>
+        <li data-en="Better rating → better compensation">Bessere Bewertung → bessere Entlohnung</li>
+        <li data-en="<b>But:</b> dependent on correctness with respect to the core priorities — money ideas can be obliged to channel more into the gs-commie priorities"><b>Aber:</b> Abhängigkeit zur Richtigkeit für die Kernprioritäten — Geldideen können verpflichtet werden, mehr in die gs-commie-Prioritäten fließen zu lassen</li>
       </ul>
-      <div class="mini" style="margin-top:10px">Streng idealistisch: Entlohnung folgt der Prioritätstreue, nicht nur dem Profit.</div>
+      <div class="mini" style="margin-top:10px" data-en="Strictly idealistic: compensation follows loyalty to the priorities, not just profit.">Streng idealistisch: Entlohnung folgt der Prioritätstreue, nicht nur dem Profit.</div>
     </div>
   </div>
 </div>
@@ -321,53 +312,53 @@ setPitchLang((navigator.language || 'de').toLowerCase().startsWith('de') ? 'de' 
 
 <section>
 <div class="wrap">
-  <h2>5 · Einigt euch vorab</h2>
-  <p class="sub" style="margin-bottom:24px">Die beiden Parteien sprechen sich <b>vorher</b> ab, wie ihre Ideen gewichtet werden. Ein <b>Admin</b> bewertet dann, ob die Einreichungen überhaupt als Ideen zählen — und ob die Umfänge einigermaßen übereinstimmen.</p>
+  <h2 data-en="5 · Agree in advance">5 · Einigt euch vorab</h2>
+  <p class="sub" style="margin-bottom:24px" data-en="The two parties agree <b>beforehand</b> on how their ideas are weighted. An <b>admin</b> then assesses whether the submissions count as ideas at all — and whether their scopes roughly match.">Die beiden Parteien sprechen sich <b>vorher</b> ab, wie ihre Ideen gewichtet werden. Ein <b>Admin</b> bewertet dann, ob die Einreichungen überhaupt als Ideen zählen — und ob die Umfänge einigermaßen übereinstimmen.</p>
   <div class="grid2">
     <div class="card">
-      <h3>Idee 1 — Gewichtung</h3>
+      <h3 data-en="Idea 1 — weighting">Idee 1 — Gewichtung</h3>
       <div class="slider-row">
-        <div class="slider-label"><span>klein</span><span>Umfang / Gewichtung</span><span id="m1-val">5</span></div>
+        <div class="slider-label"><span data-en="small">klein</span><span data-en="Scope / weighting">Umfang / Gewichtung</span><span id="m1-val">5</span></div>
         <input type="range" id="slider-m1" min="1" max="10" value="5">
       </div>
     </div>
     <div class="card">
-      <h3>Idee 2 — Gewichtung</h3>
+      <h3 data-en="Idea 2 — weighting">Idee 2 — Gewichtung</h3>
       <div class="slider-row">
-        <div class="slider-label"><span>klein</span><span>Umfang / Gewichtung</span><span id="m2-val">5</span></div>
+        <div class="slider-label"><span data-en="small">klein</span><span data-en="Scope / weighting">Umfang / Gewichtung</span><span id="m2-val">5</span></div>
         <input type="range" id="slider-m2" min="1" max="10" value="5">
       </div>
     </div>
   </div>
   <div class="card" style="margin-top:16px">
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-      <button class="btn sec" id="admin-check-btn">🛡 Admin-Prüfung</button>
-      <label class="mini"><input type="radio" name="abgabe-speed" id="speed-slow" checked> Langsam — Umfänge sorgfältig angleichen</label>
-      <label class="mini"><input type="radio" name="abgabe-speed" id="speed-fast"> Schnell abgeben — beide einigen sich, die Umfänge nicht anzugleichen</label>
+      <button class="btn sec" id="admin-check-btn" data-en="🛡 Admin review">🛡 Admin-Prüfung</button>
+      <label class="mini"><input type="radio" name="abgabe-speed" id="speed-slow" checked> <span data-en="Slow — carefully match the scopes">Langsam — Umfänge sorgfältig angleichen</span></label>
+      <label class="mini"><input type="radio" name="abgabe-speed" id="speed-fast"> <span data-en="Submit fast — both agree not to match the scopes">Schnell abgeben — beide einigen sich, die Umfänge nicht anzugleichen</span></label>
     </div>
     <div class="result" id="admin-verdict" style="margin-top:12px"></div>
   </div>
-  <p class="mini" style="margin-top:16px">✅ Haben die Parteien durch klare Absprache ihre Ideen in <b>ähnlich großen Umfängen</b> gewichtet, wirkt sich das <b>positiv auf die Rangliste</b> aus. Die <b>Solidarität</b> entsteht anders: sind sich beide einig, nicht lange angleichen zu wollen, wird die <b>umfangreichere Abgabe der weniger umfangreichen gleichgesetzt</b> — nicht unbedingt fair, aber eine Unfairness, auf die man sich gemeinsam einlässt.</p>
+  <p class="mini" style="margin-top:16px" data-en="✅ If the parties have weighted their ideas in <b>similarly sized scopes</b> through clear agreement, this has a <b>positive effect on the ranking</b>. <b>Solidarity</b> arises differently: if both agree not to spend long matching, the <b>more extensive submission is treated as equal to the less extensive one</b> — not necessarily fair, but an unfairness both accept together.">✅ Haben die Parteien durch klare Absprache ihre Ideen in <b>ähnlich großen Umfängen</b> gewichtet, wirkt sich das <b>positiv auf die Rangliste</b> aus. Die <b>Solidarität</b> entsteht anders: sind sich beide einig, nicht lange angleichen zu wollen, wird die <b>umfangreichere Abgabe der weniger umfangreichen gleichgesetzt</b> — nicht unbedingt fair, aber eine Unfairness, auf die man sich gemeinsam einlässt.</p>
 </div>
 </section>
 
 <section>
 <div class="wrap">
-  <h2>6 · Dritt-Bewertung</h2>
-  <p class="sub" style="margin-bottom:24px">Die Dritt-Instanz stellt den <b>Comparison</b> sicher: Beide Ideen kommen <b>gleichzeitig</b> auf der Webseite in Betrachtung — so entsteht eine faire Rangverteilung in der allgemeinen Liste.</p>
+  <h2 data-en="6 · Third-party assessment">6 · Dritt-Bewertung</h2>
+  <p class="sub" style="margin-bottom:24px" data-en="The third party ensures the <b>comparison</b>: both ideas are considered <b>simultaneously</b> on the website — producing a fair distribution of ranks in the general list.">Die Dritt-Instanz stellt den <b>Comparison</b> sicher: Beide Ideen kommen <b>gleichzeitig</b> auf der Webseite in Betrachtung — so entsteht eine faire Rangverteilung in der allgemeinen Liste.</p>
   <div class="grid2">
     <div class="card">
-      <h3>Dritt-Einschätzung: Idee 1</h3>
+      <h3 data-en="Third-party estimate: idea 1">Dritt-Einschätzung: Idee 1</h3>
       <div class="slider-row">
-        <div class="slider-label"><span>klein</span><span>Gewichtung laut Dritter</span><span id="d1-val">5</span></div>
+        <div class="slider-label"><span data-en="small">klein</span><span data-en="Weighting per third party">Gewichtung laut Dritter</span><span id="d1-val">5</span></div>
         <input type="range" id="slider-d1" min="1" max="10" value="5">
       </div>
       <div class="result" id="gleich-1" style="margin-top:6px"></div>
     </div>
     <div class="card">
-      <h3>Dritt-Einschätzung: Idee 2</h3>
+      <h3 data-en="Third-party estimate: idea 2">Dritt-Einschätzung: Idee 2</h3>
       <div class="slider-row">
-        <div class="slider-label"><span>klein</span><span>Gewichtung laut Dritter</span><span id="d2-val">5</span></div>
+        <div class="slider-label"><span data-en="small">klein</span><span data-en="Weighting per third party">Gewichtung laut Dritter</span><span id="d2-val">5</span></div>
         <input type="range" id="slider-d2" min="1" max="10" value="5">
       </div>
       <div class="result" id="gleich-2" style="margin-top:6px"></div>
@@ -379,87 +370,128 @@ setPitchLang((navigator.language || 'de').toLowerCase().startsWith('de') ? 'de' 
 
 <section>
 <div class="wrap">
-  <h2>7 · Tausch-Vertrag</h2>
-  <p class="sub" style="margin-bottom:24px">Die beiden Personen schließen einen Vertrag: Wie soll der Ideentausch ablaufen — und welcher <b>Effekt</b> soll entstehen?</p>
+  <h2 data-en="7 · Exchange contract">7 · Tausch-Vertrag</h2>
+  <p class="sub" style="margin-bottom:24px" data-en="The two people conclude a contract: how should the idea exchange proceed — and what <b>effect</b> should it have?">Die beiden Personen schließen einen Vertrag: Wie soll der Ideentausch ablaufen — und welcher <b>Effekt</b> soll entstehen?</p>
   <div class="card">
     <div class="grid2">
       <div>
-        <label class="mini" style="display:block;margin-bottom:6px">Wie soll der Tausch aussehen?</label>
+        <label class="mini" style="display:block;margin-bottom:6px" data-en="What should the exchange look like?">Wie soll der Tausch aussehen?</label>
         <select id="contract-mode" style="width:100%;padding:8px;background:rgba(255,255,255,0.05);color:#fff;border:1px solid rgba(255,255,255,0.12);border-radius:8px">
-          <option>Beste Idee ↔ beste Idee — vollständiger Transfer</option>
-          <option>Mittlere Idee ↔ mittlere Idee — vollständiger Transfer</option>
-          <option>Tausch mit Rücktrittsklausel (30 Tage)</option>
-          <option>Tausch als Co-Entwicklung (beide bleiben beteiligt)</option>
+          <option data-en="Best idea ↔ best idea — full transfer">Beste Idee ↔ beste Idee — vollständiger Transfer</option>
+          <option data-en="Medium idea ↔ medium idea — full transfer">Mittlere Idee ↔ mittlere Idee — vollständiger Transfer</option>
+          <option data-en="Exchange with withdrawal clause (30 days)">Tausch mit Rücktrittsklausel (30 Tage)</option>
+          <option data-en="Exchange as co-development (both remain involved)">Tausch als Co-Entwicklung (beide bleiben beteiligt)</option>
         </select>
       </div>
       <div>
-        <label class="mini" style="display:block;margin-bottom:6px">Welcher Effekt soll entstehen?</label>
-        <input type="text" id="contract-effect" placeholder="z.B. Beide Ideen erreichen Umsetzbarkeit...">
+        <label class="mini" style="display:block;margin-bottom:6px" data-en="What effect should it have?">Welcher Effekt soll entstehen?</label>
+        <input type="text" id="contract-effect" placeholder="z.B. Beide Ideen erreichen Umsetzbarkeit..." data-en-ph="e.g. Both ideas become feasible...">
       </div>
     </div>
     <div class="slider-row" style="margin-top:14px">
-      <div class="slider-label"><span>gs-commie-Verwaltungsgeld-Anteil</span><span id="vg-val">10%</span></div>
+      <div class="slider-label"><span data-en="gs-commie administrative fee share">gs-commie-Verwaltungsgeld-Anteil</span><span id="vg-val">10%</span></div>
       <input type="range" class="blue" id="slider-vg" min="0" max="50" value="10">
     </div>
-    <label class="mini" style="display:block;margin:10px 0"><input type="checkbox" id="contract-transparency"> Volle Transparenz für die Community akzeptiert</label>
-    <button class="btn" id="contract-btn">📜 Vertrag vorschauen</button>
+    <label class="mini" style="display:block;margin:10px 0"><input type="checkbox" id="contract-transparency"> <span data-en="Full transparency towards the community accepted">Volle Transparenz für die Community akzeptiert</span></label>
+    <button class="btn" id="contract-btn" data-en="📜 Preview contract">📜 Vertrag vorschauen</button>
     <div id="contract-preview" class="result" style="display:none;margin-top:14px;padding:14px;background:rgba(255,255,255,0.03);border-radius:8px;font-size:12px;line-height:1.8"></div>
   </div>
 </div>
 </section>
 
 <footer>
-<div class="wrap">
+<div class="wrap" data-en="gs-commie.uk · Gleichschalt-Kommie · Idea-exchange founding system — login &amp; Bürgliner registration to follow optionally.">
   gs-commie.uk · Gleichschalt-Kommie · Ideentausch-Gründungssystem — Login &amp; Bürgliner-Registrierung folgen optional.
 </div>
 </footer>
 
 <script>
 const $ = id => document.getElementById(id);
+let LANG = 'de';
+const T = (de, en) => LANG === 'en' ? en : de;
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+// ── Language: one switch for the whole page (static data-en + dynamic renderers) ──
+const PITCH_URL = 'https://gs-commie.uk/pitch';
+const PITCH_TEXT = {
+  de: 'Tausche deine Idee — der Gleichschalt-Kommie Pitch:',
+  en: 'Trade your idea — the Gleichschalt-Kommie pitch:'
+};
+function setLang(lang) {
+  LANG = lang;
+  try { localStorage.setItem('pitch_lang', lang); } catch (e) {}
+  document.documentElement.lang = lang;
+  document.title = T('Gleichschalt-Kommie — Tausche deine Idee', 'Gleichschalt-Kommie — Trade your idea');
+  document.querySelectorAll('[data-en]').forEach(el => {
+    if (el.dataset.de === undefined) el.dataset.de = el.innerHTML;
+    el.innerHTML = lang === 'en' ? el.dataset.en : el.dataset.de;
+  });
+  document.querySelectorAll('[data-en-ph]').forEach(el => {
+    if (el.dataset.dePh === undefined) el.dataset.dePh = el.placeholder;
+    el.placeholder = lang === 'en' ? el.dataset.enPh : el.dataset.dePh;
+  });
+  ['de', 'en'].forEach(l => {
+    $('lang-' + l).className = l === lang ? 'on' : '';
+    $('vid-' + l).className = l === lang ? 'btn' : 'btn sec';
+  });
+  const player = $('pitch-player');
+  player.src = 'media/pitch-' + lang + '.mp4';
+  player.load();
+  $('tg-share').href = 'https://t.me/share/url?url=' +
+    encodeURIComponent(PITCH_URL) + '&text=' + encodeURIComponent(PITCH_TEXT[lang]);
+  renderAll();
+}
 
 // ── Step 1: "Abgabe bereit" — docs stay sealed until BOTH are submitted ──
-let readyA = false, readyB = false;
+const ready = { a: false, b: false };
 ['a','b'].forEach(side => {
   $('files-' + side).onchange = e => {
-    const names = [...e.target.files].map(f => f.name);
-    $('files-' + side + '-list').textContent = names.length ? '📎 ' + names.join(' · ') : '';
+    const names = [...e.target.files].map(f => esc(f.name));
+    $('files-' + side + '-list').innerHTML = names.length ? '📎 ' + names.join(' · ') : '';
   };
 });
 function attachmentHtml(side) {
-  const files = [...$('files-' + side).files].map(f => '📎 ' + f.name);
-  const links = $('links-' + side).value.split(',').map(s => s.trim()).filter(Boolean).map(l => '🔗 ' + l);
+  const files = [...$('files-' + side).files].map(f => '📎 ' + esc(f.name));
+  const links = $('links-' + side).value.split(',').map(s => s.trim()).filter(Boolean).map(l => '🔗 ' + esc(l));
   const all = files.concat(links);
   return all.length ? '<br><span class="mini">' + all.join('<br>') + '</span>' : '';
 }
-function refreshSeals() {
-  if (readyA && readyB) {
-    $('plain-a').innerHTML = ($('idea-a-text').value.trim() || '(Idee A)') + attachmentHtml('a');
-    $('plain-b').innerHTML = ($('idea-b-text').value.trim() || '(Idee des Partners)') + attachmentHtml('b');
+function renderSeals() {
+  ['a','b'].forEach(side => {
+    $('ready-' + side + '-status').textContent = ready[side] ? T('✅ abgegeben · versiegelt bis beide eingegangen sind', '✅ submitted · sealed until both have arrived') : '';
+  });
+  if (ready.a && ready.b) {
+    $('plain-a').innerHTML = esc($('idea-a-text').value.trim() || T('(Idee A)', '(Idea A)')) + attachmentHtml('a');
+    $('plain-b').innerHTML = esc($('idea-b-text').value.trim() || T('(Idee des Partners)', "(Partner's idea)")) + attachmentHtml('b');
+  } else {
+    $('plain-a').textContent = $('plain-b').textContent = T('🔒 versiegelt — lesbar erst nach beiden Abgaben', '🔒 sealed — readable only after both submissions');
   }
-  updatePublish();
 }
 function submit(side) {
   const txt = $('idea-' + side + '-text');
-  if (!txt.value.trim()) { txt.placeholder = '⚠ Erst Idee beschreiben, dann abgeben.'; return; }
-  txt.disabled = true;
-  $('files-' + side).disabled = true;
-  $('links-' + side).disabled = true;
-  $('ready-' + side).disabled = true;
-  $('ready-' + side + '-status').textContent = '✅ abgegeben · versiegelt bis beide eingegangen sind';
-  if (side === 'a') readyA = true; else readyB = true;
-  refreshSeals();
+  if (!txt.value.trim()) { txt.placeholder = T('⚠ Erst Idee beschreiben, dann abgeben.', '⚠ Describe your idea first, then submit.'); return; }
+  ['idea-' + side + '-text', 'files-' + side, 'links-' + side, 'ready-' + side].forEach(id => $(id).disabled = true);
+  ready[side] = true;
+  renderSeals();
+  updatePublish();
 }
 $('ready-a').onclick = () => submit('a');
 $('ready-b').onclick = () => submit('b');
 
 // ── Step 2: login — the gs-commie.uk account name tags the submission ──
 const users = { a: null, b: null };
+function renderLogins() {
+  ['a','b'].forEach(side => {
+    const u = users[side];
+    $('slot-' + side + '-status').innerHTML = u ? T('✅ eingeloggt als ', '✅ logged in as ') + '<b class="cyan">' + u + '</b> · gs-commie.uk' : T('⏳ nicht eingeloggt', '⏳ not logged in');
+    $('tag-' + side).innerHTML = u ? T('getackt: ', 'tagged: ') + '<b class="cyan">' + u + '</b> · gs-commie.uk' : '';
+  });
+}
 function login(side, provider) {
   return () => {
     users[side] = '@' + side + '_' + provider.toLowerCase();
-    $('slot-' + side + '-status').innerHTML = '✅ eingeloggt als <b class="cyan">' + users[side] + '</b> · gs-commie.uk';
-    $('tag-' + side).innerHTML = 'getackt: <b class="cyan">' + users[side] + '</b> · gs-commie.uk';
     ['login-' + side, 'gh-' + side].forEach(id => $(id).disabled = true);
+    renderLogins();
     updatePublish();
   };
 }
@@ -469,82 +501,109 @@ $('login-b').onclick = login('b', 'Google');
 $('gh-b').onclick = login('b', 'GitHub');
 
 // ── Step 2b: Beweisvideo für den Notar (1 Video genügt, wenn beide drin sind) ──
-let videoDone = false;
+let videoName = null, videoWarn = false;
+function renderVideo() {
+  if (videoName) $('video-status').innerHTML = '✅ <b>' + esc(videoName) + '</b> ' + T('eingereicht — geht an den Bürgliner-Notar zur Prüfung', 'submitted — goes to the Bürgliner notary for review');
+  else $('video-status').textContent = videoWarn ? T('⚠ Erst eine Videodatei wählen.', '⚠ Choose a video file first.') : '';
+}
 $('video-btn').onclick = () => {
   const f = $('video-input').files[0];
-  if (!f) { $('video-status').textContent = '⚠ Erst eine Videodatei wählen.'; return; }
-  videoDone = true;
-  $('video-status').innerHTML = '✅ <b>' + f.name + '</b> eingereicht — geht an den Bürgliner-Notar zur Prüfung';
+  videoWarn = !f;
+  if (f) videoName = f.name;
+  renderVideo();
   updatePublish();
 };
 
 // ── Step 3: publish — both submitted AND both logged in AND video filed ──
+let published = false;
 function updatePublish() {
-  $('swap-btn').disabled = !(readyA && readyB && users.a && users.b && videoDone);
+  $('swap-btn').disabled = !(ready.a && ready.b && users.a && users.b && videoName);
 }
-$('swap-btn').onclick = () => {
+function renderSwap() {
+  if (!published) return;
   const r = $('swap-result');
   r.style.display = 'block';
-  r.innerHTML = '✅ <b>Tausch veröffentlicht</b> — beide Ideen sind gleichzeitig auf der Webseite sichtbar, getackt mit <b class="cyan">' +
-    users.a + '</b> und <b class="cyan">' + users.b + '</b> (gs-commie.uk). Das Beweisvideo liegt beim Notar. Als Nächstes: Vorab-Absprache &amp; Dritt-Bewertung.';
-};
+  r.innerHTML = T('✅ <b>Tausch veröffentlicht</b> — beide Ideen sind gleichzeitig auf der Webseite sichtbar, getackt mit ', '✅ <b>Exchange published</b> — both ideas are visible on the website simultaneously, tagged with ') +
+    '<b class="cyan">' + users.a + '</b> ' + T('und', 'and') + ' <b class="cyan">' + users.b + '</b> (gs-commie.uk). ' +
+    T('Das Beweisvideo liegt beim Notar. Als Nächstes: Vorab-Absprache &amp; Dritt-Bewertung.', 'The proof video is with the notary. Next: advance agreement &amp; third-party assessment.');
+}
+$('swap-btn').onclick = () => { published = true; renderSwap(); };
 
 // ── Section 5: pre-agreement + admin check ──
-['1','2'].forEach(n => { $('slider-m'+n).oninput = () => { $('m'+n+'-val').textContent = $('slider-m'+n).value; }; });
-$('admin-check-btn').onclick = () => {
-  const m1 = +$('slider-m1').value, m2 = +$('slider-m2').value;
-  const diff = Math.abs(m1 - m2);
+let adminChecked = false;
+['1','2'].forEach(n => { $('slider-m'+n).oninput = () => { $('m'+n+'-val').textContent = $('slider-m'+n).value; updateGleichheit(); }; });
+function renderAdmin() {
+  if (!adminChecked) return;
+  const diff = Math.abs(+$('slider-m1').value - +$('slider-m2').value);
   const v = $('admin-verdict');
   if ($('speed-fast').checked) {
-    v.innerHTML = '⚡ <b style="color:#f5c542">Schnelle Abgabe</b> — beide sind sich einig, die Umfänge nicht anzugleichen (' + diff + ' Punkte Unterschied). <b>Solidarität:</b> die umfangreichere Abgabe wird der weniger umfangreichen gleichgesetzt — eine Unfairness, auf die man sich gemeinsam einlässt.';
+    v.innerHTML = T('⚡ <b style="color:#f5c542">Schnelle Abgabe</b> — beide sind sich einig, die Umfänge nicht anzugleichen (' + diff + ' Punkte Unterschied). <b>Solidarität:</b> die umfangreichere Abgabe wird der weniger umfangreichen gleichgesetzt — eine Unfairness, auf die man sich gemeinsam einlässt.',
+                    '⚡ <b style="color:#f5c542">Fast submission</b> — both agree not to match the scopes (' + diff + ' points difference). <b>Solidarity:</b> the more extensive submission is treated as equal to the less extensive one — an unfairness both accept together.');
   } else if (diff <= 2) {
-    v.innerHTML = '✅ <b style="color:#2ecc71">Admin: anerkannt.</b> Beide Einreichungen gelten als Ideen und haben ähnlich große Umfänge (Abweichung ' + diff + '). Klare Absprache → <b>positiver Einfluss auf die Rangliste</b>.';
+    v.innerHTML = T('✅ <b style="color:#2ecc71">Admin: anerkannt.</b> Beide Einreichungen gelten als Ideen und haben ähnlich große Umfänge (Abweichung ' + diff + '). Klare Absprache → <b>positiver Einfluss auf die Rangliste</b>.',
+                    '✅ <b style="color:#2ecc71">Admin: approved.</b> Both submissions count as ideas and have similarly sized scopes (deviation ' + diff + '). Clear agreement → <b>positive effect on the ranking</b>.');
   } else {
-    v.innerHTML = '⚠ <b style="color:#f5c542">Admin: Umfänge unähnlich</b> (Abweichung ' + diff + '). Entweder Gewichtung angleichen — oder schnell abgeben und Solidarität akzeptieren.';
+    v.innerHTML = T('⚠ <b style="color:#f5c542">Admin: Umfänge unähnlich</b> (Abweichung ' + diff + '). Entweder Gewichtung angleichen — oder schnell abgeben und Solidarität akzeptieren.',
+                    '⚠ <b style="color:#f5c542">Admin: scopes dissimilar</b> (deviation ' + diff + '). Either match the weighting — or submit fast and accept solidarity.');
   }
-};
+}
+$('admin-check-btn').onclick = () => { adminChecked = true; renderAdmin(); };
 
-// ── Section 5: third-party rating ──
+// ── Section 6: third-party rating ──
 function gleichLabel(diff) {
-  if (diff === 0) return '✅ <b>Umfänge identisch</b>.';
-  if (diff <= 2) return '🟡 Umfänge ähnlich groß — geringe Abweichung.';
-  if (diff <= 4) return '🟠 Umfänge unähnlich — die Dritt-Instanz schätzt die Idee größer/kleiner ein.';
-  return '🔴 Umfänge stark unterschiedlich — wird angefochten.';
+  if (diff === 0) return T('✅ <b>Umfänge identisch</b>.', '✅ <b>Scopes identical</b>.');
+  if (diff <= 2) return T('🟡 Umfänge ähnlich groß — geringe Abweichung.', '🟡 Scopes similar in size — minor deviation.');
+  if (diff <= 4) return T('🟠 Umfänge unähnlich — die Dritt-Instanz schätzt die Idee größer/kleiner ein.', '🟠 Scopes dissimilar — the third party rates the idea larger/smaller.');
+  return T('🔴 Umfänge stark unterschiedlich — wird angefochten.', '🔴 Scopes very different — will be contested.');
 }
 function updateGleichheit() {
   ['1','2'].forEach(n => {
-    const tr = +$('slider-m' + n).value;
-    const d = +$('slider-d' + n).value;
-    $('d' + n + '-val').textContent = d;
-    $('gleich-' + n).innerHTML = 'Dritt-Einschätzung vs. Vereinbarung: <b>' + Math.abs(tr - d) + '</b> Punkte<br>' + gleichLabel(Math.abs(tr - d));
+    const diff = Math.abs(+$('slider-m' + n).value - +$('slider-d' + n).value);
+    $('d' + n + '-val').textContent = $('slider-d' + n).value;
+    $('gleich-' + n).innerHTML = T('Dritt-Einschätzung vs. Vereinbarung: ', 'Third-party estimate vs. agreement: ') + '<b>' + diff + '</b> ' + T('Punkte', 'points') + '<br>' + gleichLabel(diff);
   });
   const g1 = Math.abs(+$('slider-m1').value - +$('slider-d1').value);
   const g2 = Math.abs(+$('slider-m2').value - +$('slider-d2').value);
-  const box = $('gleich-gesamt');
-  if (g1 <= 2 && g2 <= 2) box.innerHTML = '✅ <b style="color:#2ecc71">Umfänge ähnlich groß</b> — der Rang in der gs-commie-Politik kann aus dieser Bewertung folgen.';
-  else box.innerHTML = '⚠ <b style="color:#f5c542">Umfänge unähnlich</b> — Einreichende können die Einordnung anpassen oder vor der Dritt-Instanz verteidigen.';
+  $('gleich-gesamt').innerHTML = (g1 <= 2 && g2 <= 2)
+    ? T('✅ <b style="color:#2ecc71">Umfänge ähnlich groß</b> — der Rang in der gs-commie-Politik kann aus dieser Bewertung folgen.', '✅ <b style="color:#2ecc71">Scopes similar in size</b> — the rank in gs-commie politics can follow from this assessment.')
+    : T('⚠ <b style="color:#f5c542">Umfänge unähnlich</b> — Einreichende können die Einordnung anpassen oder vor der Dritt-Instanz verteidigen.', '⚠ <b style="color:#f5c542">Scopes dissimilar</b> — submitters can adjust the classification or defend it before the third party.');
 }
 ['slider-d1','slider-d2'].forEach(id => $(id).oninput = updateGleichheit);
 
-// ── Section 6: contract ──
+// ── Section 7: contract ──
+let contractShown = false;
 $('slider-vg').oninput = () => { $('vg-val').textContent = $('slider-vg').value + '%'; };
-$('contract-btn').onclick = () => {
-  const mode = $('contract-mode').value;
-  const effekt = $('contract-effect').value.trim() || 'Umsetzung der getauschten Ideen im Sinne der gs-commie-Prioritäten';
+function renderContract() {
+  if (!contractShown) return;
+  const sel = $('contract-mode');
+  const mode = sel.options[sel.selectedIndex].textContent;
+  const effekt = esc($('contract-effect').value.trim()) || T('Umsetzung der getauschten Ideen im Sinne der gs-commie-Prioritäten', 'Implementation of the exchanged ideas in line with the gs-commie priorities');
   const m1 = +$('slider-m1').value, m2 = +$('slider-m2').value;
   const p = $('contract-preview');
   p.style.display = 'block';
-  p.innerHTML = '<b style="color:#f5c542">📜 Ideentausch-Vertrag</b><br>' +
-    'Zwischen <b>Person A</b> (Idee 1, Gewichtung ' + m1 + ') und <b>Person B</b> (Idee 2, Gewichtung ' + m2 + ').<br><br>' +
-    '<b>Vorab-Absprache:</b> ' + ($('speed-fast').checked ? 'schnell abgegeben — Solidarität: umfangreichere Abgabe wird der kleineren gleichgesetzt (einvernehmliche Unfairness)' : 'langsam — Umfänge angeglichen (Admin-geprüft)') + '<br>' +
-    '<b>Tausch-Modus:</b> ' + mode + '<br>' +
-    '<b>Beabsichtigter Effekt:</b> ' + effekt + '<br>' +
-    '<b>Verwaltungsgeld:</b> ' + $('slider-vg').value + '% der Erträge an gs-commie für die Hauptziele.<br>' +
-    ($('contract-transparency').checked ? '<b>Transparenz:</b> volle Community-Transparenz zugesichert.<br>' : '⚠ Transparenz nicht bestätigt.<br>') +
-    '<br><span class="mini">Gültig nach Bewertung der Kategorisierung durch die Dritt-Instanz (Abschnitt 6) und Beurkundung durch den Protester-Notar.</span>';
-};
+  p.innerHTML = T('<b style="color:#f5c542">📜 Ideentausch-Vertrag</b><br>', '<b style="color:#f5c542">📜 Idea exchange contract</b><br>') +
+    T('Zwischen <b>Person A</b> (Idee 1, Gewichtung ' + m1 + ') und <b>Person B</b> (Idee 2, Gewichtung ' + m2 + ').', 'Between <b>Person A</b> (idea 1, weighting ' + m1 + ') and <b>Person B</b> (idea 2, weighting ' + m2 + ').') + '<br><br>' +
+    T('<b>Vorab-Absprache:</b> ', '<b>Advance agreement:</b> ') + ($('speed-fast').checked
+      ? T('schnell abgegeben — Solidarität: umfangreichere Abgabe wird der kleineren gleichgesetzt (einvernehmliche Unfairness)', 'submitted fast — solidarity: the more extensive submission is treated as equal to the smaller one (mutually agreed unfairness)')
+      : T('langsam — Umfänge angeglichen (Admin-geprüft)', 'slow — scopes matched (admin-reviewed)')) + '<br>' +
+    T('<b>Tausch-Modus:</b> ', '<b>Exchange mode:</b> ') + esc(mode) + '<br>' +
+    T('<b>Beabsichtigter Effekt:</b> ', '<b>Intended effect:</b> ') + effekt + '<br>' +
+    T('<b>Verwaltungsgeld:</b> ', '<b>Administrative fee:</b> ') + $('slider-vg').value + T('% der Erträge an gs-commie für die Hauptziele.', '% of proceeds to gs-commie for the main goals.') + '<br>' +
+    ($('contract-transparency').checked
+      ? T('<b>Transparenz:</b> volle Community-Transparenz zugesichert.', '<b>Transparency:</b> full community transparency assured.')
+      : T('⚠ Transparenz nicht bestätigt.', '⚠ Transparency not confirmed.')) + '<br>' +
+    '<br><span class="mini">' + T('Gültig nach Bewertung der Kategorisierung durch die Dritt-Instanz (Abschnitt 6) und Beurkundung durch den Protester-Notar.', 'Valid after the classification has been assessed by the third party (section 6) and notarised by the Protester-Notary.') + '</span>';
+}
+$('contract-btn').onclick = () => { contractShown = true; renderContract(); };
 
-updateGleichheit();
+function renderAll() {
+  renderSeals(); renderLogins(); renderVideo(); renderSwap(); renderAdmin(); updateGleichheit(); renderContract();
+}
+
+let initial = 'de';
+try { initial = localStorage.getItem('pitch_lang') || ''; } catch (e) {}
+if (initial !== 'de' && initial !== 'en') initial = (navigator.language || 'de').toLowerCase().startsWith('de') ? 'de' : 'en';
+setLang(initial);
 </script>
 </body>
 </html>
